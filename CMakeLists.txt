@@ -1,22 +1,25 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.6)
 project (triangle LANGUAGES CXX)
 set(CMAKE_CX_C)
 
 find_package(Vulkan REQUIRED)
 
 if (NOT Vulkan_FOUND)
-	message(FATAL_ERROR "Could not find Vulkan library!")
+  message(FATAL_ERROR "Could not find Vulkan library!")
 else ()
-	message(STATUS ${Vulkan_LIBRARY})
+  message(STATUS ${Vulkan_LIBRARY})
 endif ()
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+include(CompileShaders)
 
 # find the glfw3 binaries
 find_package(glfw3 3.3 REQUIRED)
 
 if (NOT glfw3_FOUND)
-	message(FATAL_ERROR "Could not find Vulkan library!")
+  message(FATAL_ERROR "Could not find Vulkan library!")
 else ()
-	message(STATUS "${glfw3_LIBRARY} hello")
+  message(STATUS "${glfw3_LIBRARY} hello")
 endif ()
 get_cmake_property(_variableNames VARIABLES)
 # foreach (_variableName ${_variableNames})
