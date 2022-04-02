@@ -82,6 +82,9 @@ private:
 
   VkSwapchainKHR swapChain;
   std::vector<VkImage> swapChainImages;
+  std::vector<VkImageView> swapChainImageViews;
+  VkFormat swapChainImageFormat;
+  VkExtent2D swapChainExtent;
 
   void init_window() {
     glfwInit();
@@ -108,6 +111,9 @@ private:
   }
 
   void cleanup() {
+    for (auto imageView : swapChainImageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
     vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
 
@@ -181,84 +187,6 @@ private:
     }
   }
 
-  void create_swap_chain() {
-    SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(physicalDevice);
-
-    VkSurfaceFormatKHR surfaceFormat = choose_swap_surface_format(swapChainSupport.formats);
-    VkPresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.presentModes);
-    VkExtent2D extent = choose_swap_extent(swapChainSupport.capabilities);
-
-    // Simply sticking to this minimum means that we may sometimes have to wait on the driver
-    // to complete internal operations before we can acquire another image to render to.
-    // Therefore it is recommended to request at least one more image than the minimum:
-    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-
-    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-      imageCount = swapChainSupport.capabilities.maxImageCount;
-    }
-
-    VkSwapchainCreateInfoKHR createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface;
-
-    createInfo.minImageCount = imageCount;
-    createInfo.imageFormat = surfaceFormat.format;
-    createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = extent;
-    // This is always 1 unless you are developing a stereoscopic 3D application
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    QueueFamilyIndices indices = find_queue_families(physicalDevice);
-    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
-    // If the graphics queue family and presentation queue family are the same, which will be
-    // the case on most hardware, then we should stick to exclusive mode, because concurrent
-    // mode requires you to specify at least two distinct queue families.
-    if (indices.graphicsFamily != indices.presentFamily) {
-      createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-      createInfo.queueFamilyIndexCount = 2;
-      createInfo.pQueueFamilyIndices = queueFamilyIndices;
-    } else {
-      createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-      createInfo.queueFamilyIndexCount = 0; // Optional
-      createInfo.pQueueFamilyIndices = nullptr; // Optional
-    }
-
-    // We can specify that a certain transform should be applied to images in the swap chain
-    // if it is supported (supportedTransforms in capabilities), like a 90 degree clockwise
-    // rotation or horizontal flip. 
-    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-
-    // The compositeAlpha field specifies if the alpha channel should be used for blending
-    // with other windows in the window system. You'll almost always want to simply ignore the
-    // alpha channel, hence VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR.
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-
-    createInfo.presentMode = presentMode;
-    // If the clipped member is set to VK_TRUE then that means that we don't care about the
-    // color of pixels that are obscured, for example because another window is in front of
-    // them.
-    createInfo.clipped = VK_TRUE;
-
-    // For now assume we will have one swap chain
-    createInfo.oldSwapchain = VK_NULL_HANDLE;
-
-    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create swap chain!");
-    }
-
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-    swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-
-    // todo use in later chapter
-    VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
-    VkFormat swapChainImageFormat = surfaceFormat.format;
-    VkExtent2D swapChainExtent = extent;
-  }
-
   void create_surface() {
     if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
       throw std::runtime_error("failed to create window surface!");
@@ -330,6 +258,106 @@ private:
 
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+  }
+
+  void create_swap_chain() {
+    SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(physicalDevice);
+
+    VkSurfaceFormatKHR surfaceFormat = choose_swap_surface_format(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.presentModes);
+    VkExtent2D extent = choose_swap_extent(swapChainSupport.capabilities);
+
+    // Simply sticking to this minimum means that we may sometimes have to wait on the driver
+    // to complete internal operations before we can acquire another image to render to.
+    // Therefore it is recommended to request at least one more image than the minimum:
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+      imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = extent;
+    // This is always 1 unless you are developing a stereoscopic 3D application
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    QueueFamilyIndices indices = find_queue_families(physicalDevice);
+    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
+    // If the graphics queue family and presentation queue family are the same, which will be
+    // the case on most hardware, then we should stick to exclusive mode, because concurrent
+    // mode requires you to specify at least two distinct queue families.
+    if (indices.graphicsFamily != indices.presentFamily) {
+      createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+      createInfo.queueFamilyIndexCount = 2;
+      createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    } else {
+      createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      createInfo.queueFamilyIndexCount = 0; // Optional
+      createInfo.pQueueFamilyIndices = nullptr; // Optional
+    }
+
+    // We can specify that a certain transform should be applied to images in the swap chain
+    // if it is supported (supportedTransforms in capabilities), like a 90 degree clockwise
+    // rotation or horizontal flip. 
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+
+    // The compositeAlpha field specifies if the alpha channel should be used for blending
+    // with other windows in the window system. You'll almost always want to simply ignore the
+    // alpha channel, hence VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR.
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+    createInfo.presentMode = presentMode;
+    // If the clipped member is set to VK_TRUE then that means that we don't care about the
+    // color of pixels that are obscured, for example because another window is in front of
+    // them.
+    createInfo.clipped = VK_TRUE;
+
+    // For now assume we will have one swap chain
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create swap chain!");
+    }
+
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+
+    swapChainImageFormat = surfaceFormat.format;
+    swapChainExtent = extent;
+  }
+
+  void create_image_views() {
+    swapChainImageViews.resize(swapChainImages.size());
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+      VkImageViewCreateInfo createInfo{};
+      createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      createInfo.image = swapChainImages[i];
+      createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      createInfo.format = swapChainImageFormat;
+      createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      createInfo.subresourceRange.baseMipLevel = 0;
+      createInfo.subresourceRange.levelCount = 1;
+      createInfo.subresourceRange.baseArrayLayer = 0;
+      createInfo.subresourceRange.layerCount = 1;
+
+      if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image views!");
+      }
+    }
   }
 
   bool is_device_suitable(VkPhysicalDevice device) {
