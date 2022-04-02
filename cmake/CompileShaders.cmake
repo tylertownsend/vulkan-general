@@ -14,8 +14,10 @@ file(GLOB SHADERS ${SHADER_DIR}/*.vert
                   ${SHADER_DIR}/*.rgen
                   ${SHADER_DIR}/*.rchit
                   ${SHADER_DIR}/*.rmiss)
-set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build")
+
+set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/shaders")
 file(MAKE_DIRECTORY ${OUTPUT_DIR})
+
 foreach(SHADER IN LISTS SHADERS)
     get_filename_component(FILENAME ${SHADER} NAME)
     set(INPUT_PATH "${SHADER_DIR}/${FILENAME}")

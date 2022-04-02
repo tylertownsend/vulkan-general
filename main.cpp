@@ -1,7 +1,17 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#ifdef WINDOWS
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#else
+#include <unistd.h>
+#define GetCurrentDir getcwd
+#endif
+
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 #include <stdexcept>
 #include <vector>
 #include <cstring>
@@ -102,6 +112,7 @@ private:
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
+    create_graphics_pipeline();
   }
 
   void main_loop() {
@@ -487,6 +498,49 @@ private:
     return true;
   }
 
+  void create_graphics_pipeline() {
+    auto vertShaderCode = read_file("/build/shaders/shader.vert.spv");
+    auto fragShaderCode = read_file("/build/shaders/shader.frag.spv");
+
+    VkShaderModule vertShaderModule = create_shader_module(vertShaderCode);
+    VkShaderModule fragShaderModule = create_shader_module(fragShaderCode);
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    vkDestroyShaderModule(device, fragShaderModule, nullptr);
+    vkDestroyShaderModule(device, vertShaderModule, nullptr);
+  }
+
+  VkShaderModule create_shader_module(const std::vector<char>& code) {
+    VkShaderModuleCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
+    // When you perform a cast like this, you also need to ensure that the data satisfies the
+    // alignment requirements of uint32_t. Lucky for us, the data is stored in an std::vector
+    // where the default allocator already ensures that the data satisfies the worst case alignment
+    // requirements.
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create shader module!");
+    }
+
+    return shaderModule;
+  }
+
   VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
     for (const auto& availableFormat : availableFormats) {
       if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -528,6 +582,33 @@ private:
       return actualExtent;
     }
   }
+
+  static std::vector<char> read_file(const std::string& filename) {
+    // read at the end of the file is that we can use the read position to determine
+    // the size of the file and allocate a buffer
+    // Read the file as binary file (avoid text transformations)
+    char buff[FILENAME_MAX]; //create string buffer to hold path
+    GetCurrentDir( buff, FILENAME_MAX );
+    std::string current_working_directory = std::string(buff);
+    std::string full_path_to_file = current_working_directory.append(filename);
+    std::cout<<full_path_to_file<<std::endl;
+    std::ifstream file(full_path_to_file, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("failed to open file!");
+    }
+
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+
+    // After that, we can seek back
+    // to the beginning of the file and read all of the bytes at once:
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+
+    file.close();
+
+    return buffer;
+}
 
   static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
