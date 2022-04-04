@@ -96,6 +96,7 @@ private:
   VkFormat swapChainImageFormat;
   VkExtent2D swapChainExtent;
 
+  VkRenderPass renderPass;
   VkPipelineLayout pipelineLayout;
 
   void init_window() {
@@ -114,6 +115,7 @@ private:
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
+    create_render_pass();
     create_graphics_pipeline();
   }
 
@@ -124,6 +126,7 @@ private:
   }
 
   void cleanup() {
+    vkDestroyRenderPass(device, renderPass, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 
     for (auto imageView : swapChainImageViews) {
@@ -503,6 +506,44 @@ private:
     return true;
   }
 
+  void create_render_pass() {
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = swapChainImageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    // The loadOp and storeOp determine what to do with the data in the attachment
+    // before rendering and after rendering.
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef{};
+    // which attachment to reference by its index in the attachment descriptions array.
+    // Our array consists of a single VkAttachmentDescription, so its index is 0.
+    colorAttachmentRef.attachment = 0;
+    // The layout specifies which layout we would like the attachment to have
+    // during a subpass that uses this reference
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    // The index of the attachment in this array is directly referenced from the fragment
+    // shader with the layout(location = 0) out vec4 outColor directive!
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+
+    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create render pass!");
+    }
+  }
+
   void create_graphics_pipeline() {
     auto vertShaderCode = read_file("/build/shaders/shader.vert.spv");
     auto fragShaderCode = read_file("/build/shaders/shader.frag.spv");
@@ -518,6 +559,9 @@ private:
     vertShaderStageInfo.module = vertShaderModule;
     vertShaderStageInfo.pName = "main";
 
+    // Every subpass references one or more of the attachments that we've described
+    // using the structure in the previous sections. These references are themselves
+    // VkAttachmentReference structs that look like this
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
