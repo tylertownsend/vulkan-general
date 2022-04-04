@@ -98,6 +98,7 @@ private:
 
   VkRenderPass renderPass;
   VkPipelineLayout pipelineLayout;
+  VkPipeline graphicsPipeline;
 
   void init_window() {
     glfwInit();
@@ -126,8 +127,9 @@ private:
   }
 
   void cleanup() {
-    vkDestroyRenderPass(device, renderPass, nullptr);
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
 
     for (auto imageView : swapChainImageViews) {
         vkDestroyImageView(device, imageView, nullptr);
@@ -570,13 +572,13 @@ private:
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-    this->create_pipleline_layout();
+    this->create_pipleline_layout(shaderStages);
 
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
   }
 
-  void create_pipleline_layout() {
+  void create_pipleline_layout(VkPipelineShaderStageCreateInfo shaderStages[]) {
     // The VkPipelineVertexInputStateCreateInfo structure describes the format of
     // the vertex data that will be passed to the vertex shader. 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -670,6 +672,25 @@ private:
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
       throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create graphics pipeline!");
     }
   }
 
