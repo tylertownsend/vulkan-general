@@ -100,6 +100,11 @@ private:
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
 
+  std::vector<VkFramebuffer> swapChainFramebuffers;
+
+  VkCommandPool commandPool;
+  VkCommandBuffer commandBuffer;
+
   void init_window() {
     glfwInit();
 
@@ -118,6 +123,9 @@ private:
     create_swap_chain();
     create_render_pass();
     create_graphics_pipeline();
+    create_frame_buffers();
+    create_command_pool();
+    create_command_buffer();
   }
 
   void main_loop() {
@@ -127,6 +135,12 @@ private:
   }
 
   void cleanup() {
+    vkDestroyCommandPool(device, commandPool, nullptr);
+
+    for (auto framebuffer : swapChainFramebuffers) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
+
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
@@ -691,6 +705,113 @@ private:
 
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
+    }
+  }
+
+  void create_frame_buffers() {
+    swapChainFramebuffers.resize(swapChainImageViews.size());
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++ ) {
+      VkImageView attachments[] = {
+        swapChainImageViews[i]
+      };
+
+      VkFramebufferCreateInfo framebufferInfo{};
+      framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      // The attachmentCount and pAttachments parameters specify the VkImageView objects that should
+      // be bound to the respective attachment descriptions in the render pass pAttachment array.
+      framebufferInfo.renderPass = renderPass;
+      framebufferInfo.attachmentCount = 1;
+      framebufferInfo.pAttachments = attachments;
+      framebufferInfo.width = swapChainExtent.width;
+      framebufferInfo.height = swapChainExtent.height;
+      framebufferInfo.layers = 1;
+
+      if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create framebuffer!");
+      }
+    }
+  }
+
+  void create_command_pool() {
+    QueueFamilyIndices queueFamilyIndices = find_queue_families(physicalDevice);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // We will be recording a command buffer every frame, so we want to be able to
+    // reset and rerecord over it. Thus, we need to set the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag bit for our command pool.
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    
+    // Command buffers are executed by submitting them on one of the device queues,
+    // like the graphics and presentation queues we retrieved
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create command pool!");
+    }
+  }
+
+  void create_command_buffer() {
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    // The level parameter specifies if the allocated command buffers are
+    // primary or secondary command buffers.
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+      throw std::runtime_error("failed to allocate command buffers!");
+    }
+  }
+
+  void record_command_buffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    // The flags parameter specifies how we're going to use the command buffer. The following values are available:
+    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT: The command buffer will be rerecorded right after executing it once.
+    // VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT: This is a secondary command buffer that will be entirely within a single render pass.
+    // VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT: The command buffer can be resubmitted while it is also already pending execution.
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = nullptr; // Optional
+
+    
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    // The first parameters are the render pass itself and the attachments to bind. We created a framebuffer for
+    // each swap chain image where it is specified as a color attachment.
+    // Thus we need to bind the framebuffer for the swapchain image we want to draw to. 
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    // The render area defines where shader loads and stores will take place.
+    // The pixels outside this region will have undefined values.
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
+
+    // The last two parameters define the clear values to use for
+    // VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassInfo.clearValueCount = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    renderPassInfo.pClearValues = &clearColor;
+
+    // The first parameter for every command is always the command buffer to record the
+    // command to. The second parameter specifies the details of the render pass we've
+    // just provided. The final parameter controls how the drawing commands within the render
+    // pass will be provided. 
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
+    // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
+    // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
+    // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+      throw std::runtime_error("failed to record command buffer!");
     }
   }
 
