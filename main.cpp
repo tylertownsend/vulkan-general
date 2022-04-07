@@ -32,9 +32,9 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
 const bool enableValidationLayers = true;
+#else
+const bool enableValidationLayers = false;
 #endif
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
@@ -105,6 +105,10 @@ private:
   VkCommandPool commandPool;
   VkCommandBuffer commandBuffer;
 
+  VkSemaphore imageAvailableSemaphore;
+  VkSemaphore renderFinishedSemaphore;
+  VkFence inFlightFence;
+
   void init_window() {
     glfwInit();
 
@@ -121,24 +125,32 @@ private:
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
+    create_image_views();
     create_render_pass();
     create_graphics_pipeline();
     create_frame_buffers();
     create_command_pool();
     create_command_buffer();
+    create_sync_objects();
   }
 
   void main_loop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
+      draw_frame();
     }
+    vkDeviceWaitIdle(device);
   }
 
   void cleanup() {
+    vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+    vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+    vkDestroyFence(device, inFlightFence, nullptr);
+
     vkDestroyCommandPool(device, commandPool, nullptr);
 
     for (auto framebuffer : swapChainFramebuffers) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
+      vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
 
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
@@ -548,12 +560,34 @@ private:
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
 
+    // these transitions are controlled by subpass dependencies, which specify memory
+    // and execution dependencies between subpasses
+    // two built-in dependencies that take care of transition at start of render pass and end of renders pass.
+    // at the start it assumes transition occurs but we haven't acquired image yet.
+    VkSubpassDependency dependency{};
+    // The special value VK_SUBPASS_EXTERNAL refers to the implicit subpass before or after the render pass
+    // depending on whether it is specified in srcSubpass or dstSubpass.
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    // The dstSubpass must always be higher than srcSubpass to prevent cycles in the
+    // dependency graph (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
+    dependency.dstSubpass = 0;
+    // We need to wait for the swap chain to finish reading from the image before we can access it.
+    // This can be accomplished by waiting on the color attachment output stage itself.
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    // These settings will prevent the transition from happening until it's actually necessary
+    // (and allowed): when we want to start writing colors to it.
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = 1;
     renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
 
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
       throw std::runtime_error("failed to create render pass!");
@@ -774,7 +808,6 @@ private:
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
         throw std::runtime_error("failed to begin recording command buffer!");
     }
@@ -815,6 +848,72 @@ private:
     }
   }
 
+  void create_sync_objects() {
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
+        vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create semaphores!");
+    }
+  }
+
+  void draw_frame() {
+    vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &inFlightFence);
+    uint32_t imageIndex;
+    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    // call on command buffer to make sure it is able to be recorded.
+    vkResetCommandBuffer(commandBuffer, 0);
+    // call to record the commands we want.
+    record_command_buffer(commandBuffer, imageIndex);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+    // want to wait until the image is available before writing colors to the image
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    // The signalSemaphoreCount and pSignalSemaphores specifcy which semaphores to signal
+    // once the command buffer finishes execution.
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS) {
+      throw std::runtime_error("failed to submit draw command buffer!");
+    }
+    // submitting the result back to the swap chain to have it eventually show up on the screen
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+
+    VkSwapchainKHR swapChains[] = {swapChain};
+    presentInfo.swapchainCount = 1;
+    // The next two parameters specify the swap chains to present
+    // images to and the index of the image for each swap chain. This will almost always
+    // be a single one.
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
+    // There is one last optional parameter called pResults. It allows you to specify an array
+    // of VkResult values to check for every individual swap chain if presentation was successfu
+    presentInfo.pResults = nullptr;
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
+  }
+
   VkShaderModule create_shader_module(const std::vector<char>& code) {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -827,7 +926,7 @@ private:
 
     VkShaderModule shaderModule;
     if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create shader module!");
+      throw std::runtime_error("failed to create shader module!");
     }
 
     return shaderModule;
