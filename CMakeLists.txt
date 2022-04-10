@@ -19,7 +19,7 @@ find_package(glfw3 3.3 REQUIRED)
 if (NOT glfw3_FOUND)
   message(FATAL_ERROR "Could not find Vulkan library!")
 else ()
-  message(STATUS "${glfw3_LIBRARY} hello")
+  message(STATUS "${glfw}")
 endif ()
 get_cmake_property(_variableNames VARIABLES)
 # foreach (_variableName ${_variableNames})
@@ -28,11 +28,18 @@ get_cmake_property(_variableNames VARIABLES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
-file( GLOB  cpp  *.cpp )
+# do for refactoring
+# file(GLOB  cpp "src/*.cpp" )
+# set(entry_point_src "src/main.cpp")
+# add_executable(main_refactored ${entry_point_src} ${cpp})
+# target_compile_features(main_refactored PRIVATE cxx_std_17)
+# target_include_directories(main_refactored PUBLIC "${CMAKE_SOURCE_DIR}/*h")
+# target_link_libraries( main_refactored glfw)
+# target_link_libraries( main_refactored ${Vulkan_LIBRARIES})
 
-set(entry_point main.cpp)
-
-add_executable(main ${entry_point} ${cpp})
+# The main for testing
+set(entry_point "main.cpp")
+add_executable(main ${entry_point})
 target_compile_features(main PRIVATE cxx_std_17)
 target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
 target_link_libraries( main glfw)
