@@ -111,6 +111,8 @@ private:
   std::vector<VkSemaphore> renderFinishedSemaphores;
   std::vector<VkFence> inFlightFences;
 
+  bool framebufferResized = false;
+
   uint32_t currentFrame = 0;
 
   void init_window() {
@@ -120,6 +122,13 @@ private:
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
+  }
+
+  static void framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
+    auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+    app->framebufferResized = true;
   }
 
   void init_vulkan() {
@@ -155,19 +164,8 @@ private:
 
     vkDestroyCommandPool(device, commandPool, nullptr);
 
-    for (auto framebuffer : swapChainFramebuffers) {
-      vkDestroyFramebuffer(device, framebuffer, nullptr);
-    }
+    this->cleanup_swap_chain();
 
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyRenderPass(device, renderPass, nullptr);
-
-    for (auto imageView : swapChainImageViews) {
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
 
     if (enableValidationLayers) {
@@ -879,8 +877,26 @@ private:
   void draw_frame() {
     uint32_t imageIndex;
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      // swap chain has become incompatiable with surface and can no longer be used for rendering
+      // (e.g window resize)
+      recreate_swap_chain();
+      return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+      // swap chain can be used to successufly present to surface but surface properties no
+      // longer exactly match.
+      throw std::runtime_error("failed to acquire swap chain image");
+    }
+
+    // delay resetting fence until after we know for sure we will be submitting work with it.
+    // in the case of recreating swap chain:
+    //   the current frame's fence was waited upon and reset. Since we returned immediately,
+    //   no work is submitted for execution and the fence will never be signalled causing to 
+    //   wait forever.
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
     // call on command buffer to make sure it is able to be recorded.
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
     // call to record the commands we want.
@@ -924,7 +940,18 @@ private:
     // of VkResult values to check for every individual swap chain if presentation was successfu
     presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    VkResult queueResult = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    if (queueResult == VK_ERROR_OUT_OF_DATE_KHR ||
+        queueResult == VK_SUBOPTIMAL_KHR ||
+        framebufferResized) {
+      // make sure to do this after queuepresentKHR to make sure semaphores are in consistent
+      // state, otherwise a signalled semaphore may never be properly waited upon.
+      this->framebufferResized = false;
+      recreate_swap_chain();
+    } else if (queueResult != VK_SUCCESS) {
+      throw std::runtime_error("failed to present swap chain image!");
+    }
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
   }
@@ -986,6 +1013,57 @@ private:
       actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
       return actualExtent;
+    }
+  }
+
+  void cleanup_swap_chain() {
+    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+      vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+    }
+
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+      vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
+  }
+
+  // However, the disadvantage of this approach is that we need to stop all rendering before
+  // creating the new swap chain. It is possible to create a new swap chain while drawing
+  // commands on an image from the old swap chain are still in-flight. You need to pass the
+  // previous swap chain to the oldSwapChain field in the VkSwapchainCreateInfoKHR struct
+  // and destroy the old swap chain as soon as you've finished using it.
+  void recreate_swap_chain() {
+    handle_minimization();
+
+    // don't touch resources still in use
+    vkDeviceWaitIdle(device);
+
+    cleanup_swap_chain();
+
+    // Note that in chooseSwapExtent we already query the new window resolution to make sure
+    // that the swap chain images have the (new) right size, so there's no need to modify
+    // chooseSwapExtent (remember that we already had to use glfwGetFramebufferSize get the
+    // resolution of the surface in pixels when creating the swap chain).
+    create_swap_chain();
+    create_image_views();
+    create_render_pass();
+    create_graphics_pipeline();
+    create_frame_buffers();
+  }
+
+  // Minimization results in a framebuffer of size 0.
+  // Tutorial mode :) - we pause process until window is in foreground;
+  void handle_minimization() {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0) {
+      glfwGetFramebufferSize(window, &width, &height);
+      glfwWaitEvents();
     }
   }
 
