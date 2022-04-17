@@ -1,5 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #ifdef WINDOWS
 #include <direct.h>
@@ -31,6 +32,69 @@ const std::vector<const char*> validationLayers = {
 
 const std::vector<const char*> deviceExtensions = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
+struct Vertex {
+  glm::vec2 pos;
+  glm::vec3 color;
+
+  /**
+   * @brief Get the Binding Description object
+   * @details Describes at which rate to load data from memory throughout
+   * the verticies. It specifies the number of bytes between data entries
+   * and wheter tho move to the next data entry after each vertex instance.
+   * 
+   * @return VkVertexInputBindingDescription 
+   */
+  static VkVertexInputBindingDescription getBindingDescription() {
+    VkVertexInputBindingDescription bindingDescription{};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    return bindingDescription;
+  }
+
+  /**
+   * @brief Get the Attribute Descriptions object
+   * @details Describes how to extract a vertex attribute from a chunk of vertex
+   * data originating from the bind description.
+   * 
+   * @return std::array<VkVertexInputAttributeDescription, 2> 
+   */
+  static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+    // ---- position attribute ----
+    // which binding the per-vertex data comes from
+    attributeDescriptions[0].binding = 0;
+    // the location directive of the input from the vertex shader.
+    attributeDescriptions[0].location = 0;
+    // describes the type of data fro the attribute.
+    // you should use the amout of color channels matches the number of components
+    // in the shader data type.
+    // explicitly defines the byte size of attribute data
+    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    // specifies the the number of bytes since teh start of the per-vertex
+    // data to read from.
+    // the binding is loading one vertex at a time and the position attribute
+    // is an offset of 0 bytes from the beggining of this struct.
+    attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+    // --- Color Attribute ---
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(Vertex, color);
+    return attributeDescriptions;
+  }
+
+};
+
+// interleave attributes
+const std::vector<Vertex> vertices = {
+  {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+  {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+  {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 };
 
 #ifdef NDEBUG
@@ -104,6 +168,9 @@ private:
 
   std::vector<VkFramebuffer> swapChainFramebuffers;
 
+  VkBuffer vertexBuffer;
+  VkDeviceMemory vertexBufferMemory;
+
   VkCommandPool commandPool;
   std::vector<VkCommandBuffer> commandBuffers;
 
@@ -143,6 +210,7 @@ private:
     create_graphics_pipeline();
     create_frame_buffers();
     create_command_pool();
+    create_vertex_buffer();
     create_command_buffers();
     create_sync_objects();
   }
@@ -165,6 +233,10 @@ private:
     vkDestroyCommandPool(device, commandPool, nullptr);
 
     this->cleanup_swap_chain();
+    // should be available for use in rednering commands until the end
+    // of the program.
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
 
     vkDestroyDevice(device, nullptr);
 
@@ -631,14 +703,19 @@ private:
   }
 
   void create_pipleline_layout(VkPipelineShaderStageCreateInfo shaderStages[]) {
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
     // The VkPipelineVertexInputStateCreateInfo structure describes the format of
     // the vertex data that will be passed to the vertex shader. 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     // Because we're hard coding the vertex data directly in the vertex shader, we'll
     // fill in this structure to specify that there is no vertex data to load for now
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     // The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry
     // will be drawn from the vertices and if primitive restart should be enabled.
@@ -788,6 +865,59 @@ private:
     }
   }
 
+  void create_vertex_buffer() {
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    // we want this buffer to only be used from graphics queue.
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create vertex buffer!");
+    }
+
+    // Buffer is created but doesn't have mem assigned to it so we need to figure
+    // out the type of memory to allocate.
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+    auto memoryType = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    // memory allocation
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = memoryType;
+
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) {
+      throw std::runtime_error("failed to allocate vertex buffer memory!");
+    }
+
+    // if memory allocation was successful we can associate this memory
+    // with the buffer
+    vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+    // copy data to vertex buffer.
+    // mapping buffer memory into the cpu accessible memory with vkMapMemory
+    void* data;
+    vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+    memcpy(data, vertices.data(), (size_t) bufferInfo.size);
+    vkUnmapMemory(device, vertexBufferMemory);
+  }
+
+  uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+      if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+        return i;
+      }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+  }
+
   void create_command_buffers() {
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -842,11 +972,17 @@ private:
     // pass will be provided. 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    // bind vertex buffer during rendering operations
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
     // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
     // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
     // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
     // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     vkCmdEndRenderPass(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
