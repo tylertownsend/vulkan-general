@@ -92,9 +92,15 @@ struct Vertex {
 
 // interleave attributes
 const std::vector<Vertex> vertices = {
-  {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-  {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-  {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+  {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+  {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+  {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+// contents of index buffer
+const std::vector<uint16_t> indices = {
+  0, 1, 2, 2, 3, 0
 };
 
 #ifdef NDEBUG
@@ -170,6 +176,8 @@ private:
 
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
+  VkBuffer indexBuffer;
+  VkDeviceMemory indexBufferMemory;
 
   VkCommandPool commandPool;
   std::vector<VkCommandBuffer> commandBuffers;
@@ -211,6 +219,7 @@ private:
     create_frame_buffers();
     create_command_pool();
     create_vertex_buffer();
+    create_index_buffer();
     create_command_buffers();
     create_sync_objects();
   }
@@ -233,6 +242,10 @@ private:
     vkDestroyCommandPool(device, commandPool, nullptr);
 
     this->cleanup_swap_chain();
+
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+
     // should be available for use in rednering commands until the end
     // of the program.
     vkDestroyBuffer(device, vertexBuffer, nullptr);
@@ -897,6 +910,10 @@ private:
     vkFreeMemory(device, stagingBufferMemory, nullptr);
   }
 
+  // Notes: The right way to allocate memory for a large number of objects at
+  // the same time is to create a custom allocator that splits up a single
+  // allocation among many different objects by using the offset parameters
+  // that we've seen in many functions.
   void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -907,6 +924,8 @@ private:
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 
+    // We are using the command buffer only once and wait with returning
+    // to the function until copy op has finished.
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -929,6 +948,9 @@ private:
 
     // TODO: Create own dedicated queue for copy transfers
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    // if multiple transfer can be done concurrently, a fence would allow that
+    // instead of executing 1 at a time. Here we only have 1 so we wait
+    // idle until it completes
     vkQueueWaitIdle(graphicsQueue);
 
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
@@ -945,6 +967,35 @@ private:
     }
 
     throw std::runtime_error("failed to find suitable memory type!");
+  }
+
+  void create_index_buffer() {
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    this->create_buffer(bufferSize,
+                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        stagingBuffer,
+                        stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t) bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    this->create_buffer(bufferSize,
+                        // use index bit instead of vertex bit
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        indexBuffer,
+                        indexBufferMemory);
+
+    this->copy_buffer(stagingBuffer, indexBuffer, bufferSize);
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
   }
 
   void create_command_buffers() {
@@ -1007,11 +1058,13 @@ private:
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
     // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
     // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
     // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
     // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
-    vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     vkCmdEndRenderPass(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
