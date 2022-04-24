@@ -21,10 +21,19 @@ if (NOT glfw3_FOUND)
 else ()
   message(STATUS "${glfw}")
 endif ()
-get_cmake_property(_variableNames VARIABLES)
+# get_cmake_property(_variableNames VARIABLES)
 # foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
 # endforeach()
+
+# stb image dependency
+include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
+link_directories(${CMAKE_SOURCE_DIR}/deps/stb) 
+
+# Include texutres
+
+set(TEXTURES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/textures/)
+file(COPY ${TEXTURES_DIR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/build/textures/)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
