@@ -4,6 +4,11 @@ set(CMAKE_CX_C)
 
 find_package(Vulkan REQUIRED)
 
+function(COPY_SOURCES SOURCE_PATH)
+  set(SOURCE_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_PATH}/)
+  file(COPY ${SOURCE_DIR_NAME} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/build/${SOURCE_PATH}/)
+endfunction(COPY_SOURCES SOURCE_PATH)
+
 if (NOT Vulkan_FOUND)
   message(FATAL_ERROR "Could not find Vulkan library!")
 else ()
@@ -34,21 +39,11 @@ link_directories(${CMAKE_SOURCE_DIR}/deps/stb)
 include_directories(${CMAKE_SOURCE_DIR}/deps/tinyobjloader)
 link_directories(${CMAKE_SOURCE_DIR}/deps/tinyobjloader)
 
-# Include texutres
-
-set(TEXTURES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/textures/)
-file(COPY ${TEXTURES_DIR} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/build/textures/)
+# Include sources to copy: textures, models
+copy_sources(textures)
+copy_sources(models)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-
-# do for refactoring
-# file(GLOB  cpp "src/*.cpp" )
-# set(entry_point_src "src/main.cpp")
-# add_executable(main_refactored ${entry_point_src} ${cpp})
-# target_compile_features(main_refactored PRIVATE cxx_std_17)
-# target_include_directories(main_refactored PUBLIC "${CMAKE_SOURCE_DIR}/*h")
-# target_link_libraries( main_refactored glfw)
-# target_link_libraries( main_refactored ${Vulkan_LIBRARIES})
 
 # The main for testing
 set(entry_point "main.cpp")

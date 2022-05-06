@@ -6,6 +6,8 @@
 *.lo
 *.o
 *.obj
+# We want to track everything in models
+!/models/*
 
 # Precompiled Headers
 *.gch
