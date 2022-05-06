@@ -30,6 +30,10 @@ endif ()
 include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
 link_directories(${CMAKE_SOURCE_DIR}/deps/stb) 
 
+# tiny obj loader dependency
+include_directories(${CMAKE_SOURCE_DIR}/deps/tinyobjloader)
+link_directories(${CMAKE_SOURCE_DIR}/deps/tinyobjloader)
+
 # Include texutres
 
 set(TEXTURES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/textures/)
