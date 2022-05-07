@@ -2,8 +2,15 @@
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+# define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -27,11 +34,15 @@
 #include <optional>
 #include <set>
 #include <algorithm>
+#include <unordered_map>
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
+const std::string MODEL_PATH = "models/viking_room.obj";
+const std::string TEXTURE_PATH = "textures/viking_room.png";
 
 const std::vector<const char*> validationLayers = {
   "VK_LAYER_KHRONOS_validation"
@@ -52,6 +63,12 @@ struct Vertex {
   glm::vec3 color;
   // how image is mapped to geometry
   glm::vec2 texCoord;
+
+  bool operator==(const Vertex& other) const {
+    return pos == other.pos && 
+           color == other.color &&
+           texCoord == other.texCoord;
+  }
 
   /**
    * @brief Get the Binding Description object
@@ -111,22 +128,36 @@ struct Vertex {
 
 };
 
-const std::vector<Vertex> vertices = {
-  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-  {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-  {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-  {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+// Hash functions are a complex topic, but cppreference.com recommends
+// the following approach combining the fields of a struct to create
+// a decent quality hash function
+namespace std {
+  template<> struct hash<Vertex> {
+    size_t operator()(Vertex const& vertex) const {
+      return ((hash<glm::vec3>()(vertex.pos) ^
+              (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+              (hash<glm::vec2>()(vertex.texCoord) << 1);
+    }
+  };
+}
 
-  {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-  {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-  {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-  {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
+// Removing these predefined vertices and indicies to use loaded models.
+// const std::vector<Vertex> vertices = {
+//   {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+//   {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+//   {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+//   {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-const std::vector<uint16_t> indices = {
-  0, 1, 2, 2, 3, 0,
-  4, 5, 6, 6, 7, 4
-};
+//   {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+//   {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+//   {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+//   {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+// };
+
+// const std::vector<uint16_t> indices = {
+//   0, 1, 2, 2, 3, 0,
+//   4, 5, 6, 6, 7, 4
+// };
 
 #ifdef NDEBUG
 const bool enableValidationLayers = true;
@@ -209,6 +240,8 @@ private:
   VkDeviceMemory depthImageMemory;
   VkImageView depthImageView;
 
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
   VkBuffer indexBuffer;
@@ -266,6 +299,7 @@ private:
     create_texture_image();
     create_texture_image_view();
     create_texture_sampler();
+    load_model();
     create_vertex_buffer();
     create_index_buffer();
     create_uniform_buffers();
@@ -1070,7 +1104,7 @@ private:
     char buff[FILENAME_MAX]; //create string buffer to hold path
     char* cwd = GetCurrentDir( buff, FILENAME_MAX );
     std::string current_working_directory = std::string(buff);
-    const char* full_path_to_file = current_working_directory.append("/build/textures/textures.jpg").c_str();
+    const char* full_path_to_file = current_working_directory.append("/build/" + TEXTURE_PATH).c_str();
     std::cout<<full_path_to_file<<std::endl;
     stbi_uc* pixels = stbi_load(full_path_to_file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     // pixels are laid out row by row with 4 bytes per pixel in th case of
@@ -1366,6 +1400,48 @@ private:
     }
   }
 
+  void load_model() {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    // obj files can contain an arbitrary number of vertices whereas our application
+    // can only render triangles. Luckily the LoadObj has optional parameter to triangulate
+    // such faces which is enabled by default.
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+      throw std::runtime_error(warn + err);
+    }
+
+    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+    for (const auto& shape : shapes) {
+      for (const auto& index: shape.mesh.indices) {
+        Vertex vertex{};
+
+        vertex.pos = {
+          attrib.vertices[3 * index.vertex_index + 0],
+          attrib.vertices[3 * index.vertex_index + 1],
+          attrib.vertices[3 * index.vertex_index + 2],
+        };
+
+        vertex.texCoord = {
+          attrib.texcoords[2 * index.texcoord_index + 0],
+          1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
+        };
+
+        vertex.color = { 1.0f, 1.0f, 1.0f };
+
+        if (uniqueVertices.count(vertex) == 0) {
+          uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+          vertices.push_back(vertex);
+        }
+
+        indices.push_back(uniqueVertices[vertex]);
+      }
+    }
+  }
+
   void create_vertex_buffer() {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -1609,7 +1685,7 @@ private:
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     // Descriptor sets can be used in graphics or compute pipelines so we need to specify
     // which one to use.
