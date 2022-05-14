@@ -36,6 +36,8 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "buffer.h"
+#include "device.h"
 #include "image_view.h"
 #include "vertex.h"
 #include "vulkan_debug.h"
@@ -1026,11 +1028,13 @@ private:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
 
-    this->create_buffer(imageSize,
-                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                 stagingBuffer,
-                 stagingBufferMemory);
+    VT::CreateBuffer(imageSize,
+                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     stagingBuffer,
+                     stagingBufferMemory,
+                     &device,
+                     &physicalDevice);
     void *data;
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
     memcpy(data, pixels, static_cast<size_t>(imageSize));
@@ -1089,7 +1093,7 @@ private:
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+    allocInfo.memoryTypeIndex = VT::FindMemoryType(memRequirements.memoryTypeBits, properties, &physicalDevice);
 
     if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
       throw std::runtime_error("failed to allocate image memory!");
@@ -1331,11 +1335,13 @@ private:
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    this->create_buffer(bufferSize,
-                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        stagingBuffer,
-                        stagingBufferMemory);
+    VT::CreateBuffer(bufferSize,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    stagingBuffer,
+                    stagingBufferMemory,
+                    &device,
+                    &physicalDevice);
     // copy data to vertex buffer.
     // mapping buffer memory into the cpu accessible memory with vkMapMemory
     void* data;
@@ -1348,11 +1354,13 @@ private:
     // So we created the staging buffer in CPU accesible memory to upload
     // the data from the vertex array to, and the final vertex buffer
     // in device local memory.
-    this->create_buffer(bufferSize,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        vertexBuffer,
-                        vertexBufferMemory);
+    VT::CreateBuffer(bufferSize,
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                     vertexBuffer,
+                     vertexBufferMemory,
+                     &device,
+                     &physicalDevice);
     this->copy_buffer(stagingBuffer, vertexBuffer, bufferSize);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1375,41 +1383,28 @@ private:
     this->end_single_time_commands(commandBuffer);
   }
 
-  uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-      if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-        return i;
-      }
-    }
-
-    throw std::runtime_error("failed to find suitable memory type!");
-  }
-
   void create_index_buffer() {
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    this->create_buffer(bufferSize,
-                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        stagingBuffer,
-                        stagingBufferMemory);
+    VT::CreateBuffer(bufferSize,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    stagingBuffer,
+                    stagingBufferMemory, &device, &physicalDevice);
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
     memcpy(data, indices.data(), (size_t) bufferSize);
     vkUnmapMemory(device, stagingBufferMemory);
 
-    this->create_buffer(bufferSize,
+    VT::CreateBuffer(bufferSize,
                         // use index bit instead of vertex bit
                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                         indexBuffer,
-                        indexBufferMemory);
+                        indexBufferMemory, &device, &physicalDevice);
 
     this->copy_buffer(stagingBuffer, indexBuffer, bufferSize);
 
@@ -1424,11 +1419,13 @@ private:
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      this->create_buffer(bufferSize,
-                          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                          uniformBuffers[i],
-                          uniformBuffersMemory[i]);
+      VT::CreateBuffer(bufferSize,
+                       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                       uniformBuffers[i],
+                       uniformBuffersMemory[i],
+                       &device,
+                       &physicalDevice);
     }
   }
 
@@ -1849,41 +1846,6 @@ private:
     }
   }
 
-  void create_buffer(
-      VkDeviceSize size,
-      VkBufferUsageFlags usage,
-      VkMemoryPropertyFlags properties,
-      VkBuffer& buffer,
-      VkDeviceMemory& bufferMemory) {
-
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create buffer!");
-    }
-
-    // Buffer is created but doesn't have mem assigned to it so we need to figure
-    // out the type of memory to allocate.
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-      throw std::runtime_error("failed to allocate buffer memory!");
-    }
-
-    // if memory allocation was successful we can associate this memory
-    // with the buffer
-    vkBindBufferMemory(device, buffer, bufferMemory, 0);
-  }
 
   static std::vector<char> read_file(const std::string& filename) {
     // read at the end of the file is that we can use the read position to determine
