@@ -47,7 +47,7 @@ class Vulkan {
   VulkanInstanceInfo _instance_info;
   VulkanOptions _options;
 
-  Vulkan(const VulkanOptions options, const VulkanInstanceInfo instance_info) {
+  Vulkan(const VulkanOptions options, const VulkanInstanceInfo& instance_info) {
     _options = options;
     _instance_info = instance_info;
   }
@@ -69,7 +69,7 @@ class Vulkan {
   }
 
 public:
-  Vulkan* CreateInstance(const VulkanOptions& options) {
+  Vulkan* CreateInstance(const VulkanOptions options) {
     auto instance = CreateVkInstance(options);
 
     auto debug_messenger = SetupDebugMessenger(instance, enableValidationLayers);
@@ -100,7 +100,9 @@ public:
 
 private:
   VkInstance* CreateVkInstance(const VulkanOptions& options) {
+    auto extensions = get_required_extensions(options.extensions_array, options.extension_count);
     VkInstance* instance;
+
     if (enableValidationLayers && !check_validation_layer_support()) {
       throw std::runtime_error("validation layers requested, but not available!");
     }
@@ -116,8 +118,6 @@ private:
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-
-    auto extensions = get_required_extensions(options.extensions_array, options.extension_count);
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 

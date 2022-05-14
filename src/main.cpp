@@ -36,6 +36,8 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "image_view.h"
+
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t WIDTH = 800;
@@ -577,7 +579,12 @@ private:
     swapChainImageViews.resize(swapChainImages.size());
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-      swapChainImageViews[i] = this->create_image_view(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+      VT::ImageViewOptions options{};
+      options.device = &device;
+      options.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+      options.format = swapChainImageFormat;
+      options.image = &swapChainImages[i];
+      swapChainImageViews[i] = VT::CreateImageView(options);
     }
   }
 
@@ -1051,7 +1058,13 @@ private:
     VkFormat depthFormat = find_depth_format();
 
     this->create_image(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = this->create_image_view(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    VT::ImageViewOptions options{};
+    options.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+    options.image = &depthImage;
+    options.format = depthFormat;
+    options.device = &device;
+    depthImageView = VT::CreateImageView(options);
 
     transition_image_layout(depthImage,
                             depthFormat,
@@ -1336,31 +1349,12 @@ private:
   }
 
   void create_texture_image_view() {
-    textureImageView = this->create_image_view(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-  }
-
-  VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.subresourceRange.aspectMask = aspectFlags;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    VkImageView imageView;
-    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create texture image view!");
-    }
-
-    return imageView;
+    VT::ImageViewOptions options{};
+    options.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    options.format = VK_FORMAT_R8G8B8A8_SRGB;
+    options.device = &device;
+    options.image = &textureImage;
+    textureImageView = VT::CreateImageView(options);
   }
 
   void create_texture_sampler() {

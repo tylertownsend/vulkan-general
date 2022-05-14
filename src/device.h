@@ -26,7 +26,6 @@ struct SwapChainSupportDetails {
 };
 
 class VulkanDevice {
-
   VkPhysicalDevice* PickPhysicalDevice(const VkInstance& instance, const VkSurfaceKHR& surface) {
     uint32_t deviceCount = 0;
     VkPhysicalDevice* physical_device = VK_NULL_HANDLE;
@@ -53,10 +52,10 @@ class VulkanDevice {
   }
 
   VkDevice* CreateLogicalDevice(
-      const std::vector<VkDeviceQueueCreateInfo> queueCreateInfos,
+      const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos,
       const VkPhysicalDevice& physical_device,
       bool enable_validation_layers,
-      const std::vector<char*> validation_layers) {
+      const std::vector<char*>& validation_layers) {
     VkDevice* device;
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
