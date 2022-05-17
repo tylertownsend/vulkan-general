@@ -1,3 +1,4 @@
+#pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -7,11 +8,12 @@
 
 #include "queue_families.h"
 
+namespace VT {
 struct SwapChainOptions {
   VkInstance* instance;
-  VkSurfaceKHR& surface;
-  VkPhysicalDevice& physical_device;
-  VkDevice& device;
+  VkSurfaceKHR* surface;
+  VkPhysicalDevice* physical_device;
+  VkDevice* device;
   GLFWwindow* window;
 };
 
@@ -22,24 +24,31 @@ struct SwapChainSupportDetails {
 };
 
 struct SwapchainInfo {
-  VkSwapchainKHR* swapchain;
+  VkSwapchainKHR swapchain;
   std::vector<VkImage> swapchain_images;
-  VkFormat* swapchain_image_format;
-  VkExtent2D* swapchain_extent;
+  VkFormat swapchain_image_format;
+  VkExtent2D swapchain_extent;
 };
 
-SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
-  VkSwapchainKHR* swapchain;
-  std::vector<VkImage> swapchain_images;
-  VkFormat* swapchain_image_format;
-  VkExtent2D* swapchain_extent;
+SwapchainInfo CreateSwapchain(SwapChainOptions& options);
+bool CheckSwapChainAdequate(bool extensionsSupported, VkPhysicalDevice& device, VkSurfaceKHR& surface);
+VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+VkPresentModeKHR choose_swap_present_mode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
+SwapChainSupportDetails query_swap_chain_support_details(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 
-  SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(options.physical_device, options.surface);
+SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
+  VkSwapchainKHR swapchain;
+  std::vector<VkImage> swapchain_images;
+  VkFormat swapchain_image_format;
+  VkExtent2D swapchain_extent;
+  SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(
+    *options.physical_device,
+    *options.surface);
 
   VkSurfaceFormatKHR surfaceFormat = choose_swap_surface_format(swapChainSupport.formats);
   VkPresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.presentModes);
   VkExtent2D extent = choose_swap_extent(swapChainSupport.capabilities, options.window);
-
   // Simply sticking to this minimum means that we may sometimes have to wait on the driver
   // to complete internal operations before we can acquire another image to render to.
   // Therefore it is recommended to request at least one more image than the minimum:
@@ -51,7 +60,7 @@ SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
 
   VkSwapchainCreateInfoKHR createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-  createInfo.surface = options.surface;
+  createInfo.surface = *options.surface;
 
   createInfo.minImageCount = imageCount;
   createInfo.imageFormat = surfaceFormat.format;
@@ -61,7 +70,9 @@ SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-  QueueFamilyIndices indices = FindQueueFamilies(options.physical_device, options.surface);
+  QueueFamilyIndices indices = FindQueueFamilies(
+    *options.physical_device,
+    *options.surface);
   uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
   // If the graphics queue family and presentation queue family are the same, which will be
@@ -96,22 +107,30 @@ SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
   // For now assume we will have one swap chain
   createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-  if (vkCreateSwapchainKHR(options.device, &createInfo, nullptr, swapchain) != VK_SUCCESS) {
+  if (vkCreateSwapchainKHR(*options.device, &createInfo, nullptr, &swapchain) != VK_SUCCESS) {
     throw std::runtime_error("failed to create swap chain!");
   }
-  
-  vkGetSwapchainImagesKHR(options.device, *swapchain, &imageCount, nullptr);
+  vkGetSwapchainImagesKHR(*options.device, swapchain, &imageCount, nullptr);
   swapchain_images.resize(imageCount);
-  vkGetSwapchainImagesKHR(options.device, *swapchain, &imageCount, swapchain_images.data());
+  vkGetSwapchainImagesKHR(*options.device, swapchain, &imageCount, swapchain_images.data());
 
-  *swapchain_image_format = surfaceFormat.format;
-  *swapchain_extent = extent;
+  swapchain_image_format = surfaceFormat.format;
+  swapchain_extent = extent;
+
   return {
     swapchain,
     swapchain_images,
     swapchain_image_format,
     swapchain_extent
   };
+}
+
+bool CheckSwapChainAdequate(bool extensionsSupported, VkPhysicalDevice& device, VkSurfaceKHR& surface) {
+  if (extensionsSupported) {
+    SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(device, surface);
+    return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+  }
+  return false;
 }
 
 VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
@@ -177,3 +196,4 @@ SwapChainSupportDetails query_swap_chain_support_details(VkPhysicalDevice& devic
 
   return details;
 }
+} // VT
