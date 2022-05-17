@@ -1,3 +1,4 @@
+#pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -5,16 +6,35 @@
 #include <array>
 #include <vector>
 
+namespace VT {
 struct RenderPassOptions {
-  VkFormat *swapchain_image_format;
-  VkDevice *device;
+  VkFormat swapchain_image_format;
+  VkDevice device;
+  VkPhysicalDevice physical_device;
 };
 
-VkRenderPass* CreateRenderPass(RenderPassOptions& options) {
-  VkRenderPass* render_pass;
+VkFormat find_depth_format(VkPhysicalDevice physical_device);
+/**
+ * @brief Takes a list of candidates from most desirable to least desirable and
+ * returns the first one that is supported.
+ * 
+ * @param candidates 
+ * @param tiling 
+ * @param features 
+ * @return VkFormat The most desirable supported format.
+ */
+VkFormat find_supported_format(
+    VkPhysicalDevice physical_device,
+    const std::vector<VkFormat>& candidates, 
+    VkImageTiling tiling,
+    VkFormatFeatureFlags features);
+VkRenderPass CreateRenderPass(RenderPassOptions& options);
+
+VkRenderPass CreateRenderPass(RenderPassOptions& options) {
+  VkRenderPass render_pass;
 
   VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = *options.swapchain_image_format;
+  colorAttachment.format = options.swapchain_image_format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   // The loadOp and storeOp determine what to do with the data in the attachment
   // before rendering and after rendering.
@@ -32,7 +52,7 @@ VkRenderPass* CreateRenderPass(RenderPassOptions& options) {
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   VkAttachmentDescription depthAttachment{};
-  depthAttachment.format = find_depth_format();
+  depthAttachment.format = find_depth_format(options.physical_device);
   depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -87,45 +107,39 @@ VkRenderPass* CreateRenderPass(RenderPassOptions& options) {
   render_pass_info.pDependencies = &dependency;
 
 
-
-  if (vkCreateRenderPass(*options.device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS) {
+  if (vkCreateRenderPass(options.device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) {
     throw std::runtime_error("failed to create render pass!");
   }
+
+  return render_pass;
 }
 
-VkFormat find_depth_format() {
+VkFormat find_depth_format(VkPhysicalDevice physical_device) {
   return find_supported_format(
+    physical_device,
     {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
     VK_IMAGE_TILING_OPTIMAL,
     VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
   );
 }
 
-/**
-   * @brief Takes a list of candidates from most desirable to least desirable and
-   * returns the first one that is supported.
-   * 
-   * @param candidates 
-   * @param tiling 
-   * @param features 
-   * @return VkFormat The most desirable supported format.
-   */
-  VkFormat find_supported_format(
-      VkPhysicalDevice* phsyical_device,
-      const std::vector<VkFormat>& candidates, 
-      VkImageTiling tiling,
-      VkFormatFeatureFlags features) {
+VkFormat find_supported_format(
+    VkPhysicalDevice physical_device,
+    const std::vector<VkFormat>& candidates, 
+    VkImageTiling tiling,
+    VkFormatFeatureFlags features) {
 
-    for (auto format : candidates) {
-      VkFormatProperties props;
+  for (auto format : candidates) {
+    VkFormatProperties props;
 
-      vkGetPhysicalDeviceFormatProperties(*phsyical_device, format, &props);
+    vkGetPhysicalDeviceFormatProperties(physical_device, format, &props);
 
-      if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features)) {
-        return format;
-      } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-        return format;
-      }
+    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features)) {
+      return format;
+    } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+      return format;
     }
-    throw std::runtime_error("failed to find supported format!");
   }
+  throw std::runtime_error("failed to find supported format!");
+}
+} // VT
