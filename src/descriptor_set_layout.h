@@ -53,4 +53,4 @@ VkDescriptorSetLayout CreateDescriptorSetLayout(DescriptorSetLayoutOptions& opti
   }
   return descriptor_set_layout;
 }
-}
+} // VT
