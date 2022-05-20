@@ -44,6 +44,7 @@
 #include "vulkan_debug.h"
 #include "queue_families.h"
 #include "renderpass.h"
+#include "descriptor_set_layout.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -511,35 +512,8 @@ private:
   }
 
   void create_descriptor_set_layout() {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // relavant for sampling related descriptors.
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-    // shader stage the descriptor is referenced.
-    // the stage flags can be a combinatino of VkShaderStageFlagBits
-    // or the value VKSHADER_STAGE_ALL_GRAPHICS
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    // where the color of the fragment i sgoing to be determined.
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
-
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create descriptor set layout!");
-    }
+    VT::DescriptorSetLayoutOptions options{ swapChainImageFormat, device };
+    descriptorSetLayout = VT::CreateDescriptorSetLayout(options);
   }
 
   void create_graphics_pipeline() {
