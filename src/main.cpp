@@ -12,17 +12,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
-#ifdef WINDOWS
-#include <direct.h>
-#define GetCurrentDir _getcwd
-#else
-#include <unistd.h>
-#define GetCurrentDir getcwd
-#endif
-
 #include <chrono>
 #include <iostream>
 #include <filesystem>
@@ -47,14 +36,14 @@
 #include "descriptor_set_layout.h"
 #include "graphics_pipeline.h"
 #include "command_buffer.h"
+#include "texture_image.h"
+#include "constants.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
 
 const std::vector<const char*> validationLayers = {
   "VK_LAYER_KHRONOS_validation"
@@ -591,10 +580,13 @@ private:
     options.format = depthFormat;
     options.device = device;
     depthImageView = VT::CreateImageView(options);
-    transition_image_layout(depthImage,
-                            depthFormat,
-                            VK_IMAGE_LAYOUT_UNDEFINED,
-                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    VT::TransitionImageLayout(device,
+                              commandPool,
+                              graphicsQueue,
+                              depthImage,
+                              depthFormat,
+                              VK_IMAGE_LAYOUT_UNDEFINED,
+                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   }
 
   /**
@@ -638,162 +630,14 @@ private:
   }
 
   void create_texture_image() {
-    int texWidth, texHeight, texChannels;
-    char buff[FILENAME_MAX]; //create string buffer to hold path
-    char* cwd = GetCurrentDir( buff, FILENAME_MAX );
-    std::string current_working_directory = std::string(buff);
-    const char* full_path_to_file = current_working_directory.append("/build/" + TEXTURE_PATH).c_str();
-    std::cout<<full_path_to_file<<std::endl;
-    stbi_uc* pixels = stbi_load(full_path_to_file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    // pixels are laid out row by row with 4 bytes per pixel in th case of
-    // STBI_rgb_alpha for a total of texWidth*texHeight *4
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-    if (!pixels) {
-      throw std::runtime_error("failed to load texture image!");
-    }
-
-    // Create a buffer in host visible memory so that we can use
-    // vkMapMemory and copy pixels to it.
-    // Buffer should be in host visible memory so we can map it and
-    // should be usable as a transfer source so we can copy it
-    // to an image later on.
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-
-    VT::CreateBuffer(imageSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer,
-                     stagingBufferMemory,
-                     &device,
-                     &physicalDevice);
-    void *data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vkUnmapMemory(device, stagingBufferMemory);
-
-    stbi_image_free(pixels);
-
-    VT::CreateImageOptions options(
-      texWidth,
-      texHeight,
-      VK_FORMAT_R8G8B8A8_SRGB,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VT::CreateTextureImageOptions options{
       device,
-      physicalDevice);
-    VT::CreateImage(options, textureImage, textureImageMemory);
-
-    this->transition_image_layout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    this->copy_buffer_to_image(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    this->transition_image_layout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
-  }
-
-  void transition_image_layout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
-
-    // Use a barrier to make sure transition completes
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = oldLayout;
-    barrier.newLayout = newLayout;
-
-    // If you are using the barrier to transfer queue family ownership,
-    // then these two fields should be the indices of the queue families.
-    // They must be set to VK_QUEUE_FAMILY_IGNORED if you don't want to do
-    // this (not the default value!).
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-    barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = 0; // TODO
-    barrier.dstAccessMask = 0; // TODO
-
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-        newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-      barrier.srcAccessMask = 0;
-      barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-      sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && 
-               newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-      sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-      destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-               newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-      barrier.srcAccessMask = 0;
-      barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-      sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      // the reading happens in the VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT stage
-      // and the writing in the VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT. You should
-      // pick the earliest pipeline stage that matches the specified operations, so
-      // that it is ready for usage as depth attachment when it needs to be.
-      destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    } else {
-      throw std::invalid_argument("unsupported layout transition!");
-    }
-
-    vkCmdPipelineBarrier(
-        commandBuffer,
-        sourceStage, destinationStage,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &barrier
-    );
-
-
-    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
-  }
-
-  void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
-
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    // Specifying 0 for both indicates that the pixels are simply
-    // tightly packed like they are in our case
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-
-    // what part of image we want to copy to pixels
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {
-        width,
-        height,
-        1
+      physicalDevice,
+      commandPool,
+      graphicsQueue
     };
-
-    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-
-    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
+    VT::CreateTextureImage(options, textureImage, textureImageMemory);
   }
-
 
   void create_texture_image_view() {
     VT::ImageViewOptions options{};
@@ -850,7 +694,7 @@ private:
     // obj files can contain an arbitrary number of vertices whereas our application
     // can only render triangles. Luckily the LoadObj has optional parameter to triangulate
     // such faces which is enabled by default.
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, VT::MODEL_PATH.c_str())) {
       throw std::runtime_error(warn + err);
     }
 
@@ -893,8 +737,8 @@ private:
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     stagingBuffer,
                     stagingBufferMemory,
-                    &device,
-                    &physicalDevice);
+                    device,
+                    physicalDevice);
     // copy data to vertex buffer.
     // mapping buffer memory into the cpu accessible memory with vkMapMemory
     void* data;
@@ -912,8 +756,8 @@ private:
                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                      vertexBuffer,
                      vertexBufferMemory,
-                     &device,
-                     &physicalDevice);
+                     device,
+                     physicalDevice);
     this->copy_buffer(stagingBuffer, vertexBuffer, bufferSize);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -945,7 +789,7 @@ private:
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     stagingBuffer,
-                    stagingBufferMemory, &device, &physicalDevice);
+                    stagingBufferMemory, device, physicalDevice);
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -957,7 +801,7 @@ private:
                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                         indexBuffer,
-                        indexBufferMemory, &device, &physicalDevice);
+                        indexBufferMemory, device, physicalDevice);
 
     this->copy_buffer(stagingBuffer, indexBuffer, bufferSize);
 
@@ -977,8 +821,8 @@ private:
                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                        uniformBuffers[i],
                        uniformBuffersMemory[i],
-                       &device,
-                       &physicalDevice);
+                       device,
+                       physicalDevice);
     }
   }
 
