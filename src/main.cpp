@@ -46,6 +46,7 @@
 #include "renderpass.h"
 #include "descriptor_set_layout.h"
 #include "graphics_pipeline.h"
+#include "command_buffer.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -726,7 +727,7 @@ private:
   }
 
   void transition_image_layout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-    VkCommandBuffer commandBuffer = this->begin_single_time_commands();
+    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
 
     // Use a barrier to make sure transition completes
     VkImageMemoryBarrier barrier{};
@@ -793,11 +794,11 @@ private:
     );
 
 
-    this->end_single_time_commands(commandBuffer);
+    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
   }
 
   void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-    VkCommandBuffer commandBuffer = this->begin_single_time_commands();
+    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
 
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
@@ -822,48 +823,9 @@ private:
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 
-    this->end_single_time_commands(commandBuffer);
+    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
   }
 
-  VkCommandBuffer begin_single_time_commands() {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-    // We are using the command buffer only once and wait with returning
-    // to the function until copy op has finished.
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-    return commandBuffer;
-  }
-
-  void end_single_time_commands(VkCommandBuffer commandBuffer) {
-    // The command buffer only contains the copy command so we can stop
-    // recording after that.
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    // TODO: Create own dedicated queue for copy transfers
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    // if multiple transfer can be done concurrently, a fence would allow that
-    // instead of executing 1 at a time. Here we only have 1 so we wait
-    // idle until it completes
-    vkQueueWaitIdle(graphicsQueue);
-
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-  }
 
   void create_texture_image_view() {
     VT::ImageViewOptions options{};
@@ -995,7 +957,7 @@ private:
   // that we've seen in many functions.
   void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
 
-    VkCommandBuffer commandBuffer = this->begin_single_time_commands();
+    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
 
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0; // Optional
@@ -1003,7 +965,7 @@ private:
     copyRegion.size = size;
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-    this->end_single_time_commands(commandBuffer);
+    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
   }
 
   void create_index_buffer() {
