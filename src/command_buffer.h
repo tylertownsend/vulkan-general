@@ -6,6 +6,30 @@
 
 
 namespace VT {
+VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool command_pool);
+void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkDevice device, VkCommandPool command_pool, VkQueue graphics_queue);
+struct CopyBufferOptions {
+  VkDevice device;
+  VkCommandPool command_pool;
+  VkQueue graphics_queue;
+};
+
+// Notes: The right way to allocate memory for a large number of objects at
+// the same time is to create a custom allocator that splits up a single
+// allocation among many different objects by using the offset parameters
+// that we've seen in many functions.
+void CopyBuffer(CopyBufferOptions& options, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+
+  VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(options.device, options.command_pool);
+
+  VkBufferCopy copyRegion{};
+  copyRegion.srcOffset = 0; // Optional
+  copyRegion.dstOffset = 0; // Optional
+  copyRegion.size = size;
+  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+  VT::EndSingleTimeCommands(commandBuffer, options.device, options.command_pool, options.graphics_queue);
+}
 
 VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool command_pool) {
   VkCommandBufferAllocateInfo allocInfo{};

@@ -728,56 +728,8 @@ private:
   }
 
   void create_vertex_buffer() {
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    VT::CreateBuffer(bufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    stagingBuffer,
-                    stagingBufferMemory,
-                    device,
-                    physicalDevice);
-    // copy data to vertex buffer.
-    // mapping buffer memory into the cpu accessible memory with vkMapMemory
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, vertices.data(), (size_t) bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
-
-    // The most optimal memory has the VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT flag
-    // and is usually not accessible by the CPU on dedicated graphics cards.
-    // So we created the staging buffer in CPU accesible memory to upload
-    // the data from the vertex array to, and the final vertex buffer
-    // in device local memory.
-    VT::CreateBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                     vertexBuffer,
-                     vertexBufferMemory,
-                     device,
-                     physicalDevice);
-    this->copy_buffer(stagingBuffer, vertexBuffer, bufferSize);
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
-  }
-
-  // Notes: The right way to allocate memory for a large number of objects at
-  // the same time is to create a custom allocator that splits up a single
-  // allocation among many different objects by using the offset parameters
-  // that we've seen in many functions.
-  void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-
-    VkCommandBuffer commandBuffer = VT::BeginSingleTimeCommands(device, commandPool);
-
-    VkBufferCopy copyRegion{};
-    copyRegion.srcOffset = 0; // Optional
-    copyRegion.dstOffset = 0; // Optional
-    copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-    VT::EndSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
+    VT::CreateVertexBufferOptions options{device, physicalDevice, commandPool, graphicsQueue, vertices};
+    VT::CreateVertexBuffer(options, vertexBuffer, vertexBufferMemory);
   }
 
   void create_index_buffer() {
@@ -802,8 +754,8 @@ private:
                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                         indexBuffer,
                         indexBufferMemory, device, physicalDevice);
-
-    this->copy_buffer(stagingBuffer, indexBuffer, bufferSize);
+    VT::CopyBufferOptions copy_buffer_options {device, commandPool, graphicsQueue};
+    VT::CopyBuffer(copy_buffer_options, stagingBuffer, indexBuffer, bufferSize);
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);

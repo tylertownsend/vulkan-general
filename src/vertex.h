@@ -12,6 +12,8 @@
 # define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+#include "command_buffer.h"
+
 namespace VT {
 struct UniformBufferObject {
   alignas(16) glm::mat4 model;
@@ -86,8 +88,52 @@ struct Vertex {
 
     return attributeDescriptions;
   }
-
 };
+
+struct CreateVertexBufferOptions {
+  VkDevice device;
+  VkPhysicalDevice physical_device;
+  VkCommandPool command_pool;
+  VkQueue graphics_queue;
+  std::vector<Vertex>& vertices;
+};
+
+void CreateVertexBuffer(CreateVertexBufferOptions& options, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory) {
+  VkDeviceSize bufferSize = sizeof(options.vertices[0]) * options.vertices.size();
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  VT::CreateBuffer(bufferSize,
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                  stagingBuffer,
+                  stagingBufferMemory,
+                  options.device,
+                  options.physical_device);
+  // copy data to vertex buffer.
+  // mapping buffer memory into the cpu accessible memory with vkMapMemory
+  void* data;
+  vkMapMemory(options.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, options.vertices.data(), (size_t) bufferSize);
+  vkUnmapMemory(options.device, stagingBufferMemory);
+
+  // The most optimal memory has the VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT flag
+  // and is usually not accessible by the CPU on dedicated graphics cards.
+  // So we created the staging buffer in CPU accesible memory to upload
+  // the data from the vertex array to, and the final vertex buffer
+  // in device local memory.
+  VT::CreateBuffer(bufferSize,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    vertexBuffer,
+                    vertexBufferMemory,
+                    options.device,
+                    options.physical_device);
+  VT::CopyBufferOptions copy_buffer_options {options.device, options.command_pool, options.graphics_queue};
+  VT::CopyBuffer(copy_buffer_options, stagingBuffer, vertexBuffer, bufferSize);
+  vkDestroyBuffer(options.device, stagingBuffer, nullptr);
+  vkFreeMemory(options.device, stagingBufferMemory, nullptr);
+}
 }
 
 // Hash functions are a complex topic, but cppreference.com recommends
