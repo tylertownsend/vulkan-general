@@ -34,7 +34,7 @@ namespace VT {
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties, physicalDevice);
+    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties, *physicalDevice);
 
     if (vkAllocateMemory(*device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
       throw std::runtime_error("failed to allocate buffer memory!");
