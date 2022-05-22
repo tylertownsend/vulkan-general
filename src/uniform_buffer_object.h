@@ -53,4 +53,42 @@ void CreateUniformBuffers(
                       options.physical_device);
   }
 }
+
+
+// generate a new transformation every frame to make the geometry
+// spin around
+void UpdateUniformBuffer(VkDevice device, std::vector<VkDeviceMemory>& uniform_buffers_memory, VkExtent2D swap_chain_extent, uint32_t currentImage) {
+  static auto startTime = std::chrono::high_resolution_clock::now();
+
+  auto currentTime = std::chrono::high_resolution_clock::now();
+  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+  VT::UniformBufferObject ubo{};
+  // simple rotatio around z axis using time variable
+  auto rotation_angle =  time * glm::radians(90.0f);
+  ubo.model = glm::rotate(glm::mat4(1.0f), 
+                          rotation_angle,
+                          glm::vec3(0.0f, 0.0f, 1.0f));
+  ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
+                          glm::vec3(0.0f, 0.0f, 0.0f),
+                          glm::vec3(0.0f, 0.0f, 1.0f));
+  // prospective project with a 45 degree vertical field of view.
+  // its important that he current swap chain textent to calculate the aspect
+  // ratio to take into account the new width and height of the window after
+  // resize
+  ubo.proj = glm::perspective(glm::radians(45.0f),
+                              swap_chain_extent.width / (float) swap_chain_extent.height,
+                              1.0f,
+                              10.0f);
+  // GLM was originally designed for OpenGl where the Y coordinate of
+  // of the clip coordinates is inverted. The easiest way to compensate
+  // is to flip the sign of the scaling factor of the Y axis in the projection
+  // matrix
+  ubo.proj[1][1] *= -1;
+
+  void* data;
+  vkMapMemory(device, uniform_buffers_memory[currentImage], 0, sizeof(ubo), 0, &data);
+  memcpy(data, &ubo, sizeof(ubo));
+  vkUnmapMemory(device, uniform_buffers_memory[currentImage]);
+}
 } // VT
