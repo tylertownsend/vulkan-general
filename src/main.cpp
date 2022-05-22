@@ -38,6 +38,7 @@
 #include "command_buffer.h"
 #include "texture_image.h"
 #include "constants.h"
+#include "uniform_buffer_object.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -649,40 +650,8 @@ private:
   }
 
   void create_texture_sampler() {
-    VkPhysicalDeviceProperties properties{};
-    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    // how to interpret pixels that are magnified or minified.
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    // we want to repeat texture when oing beyond image dimensions.
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.anisotropyEnable = VK_TRUE;
-    // limits the amount of samples that can be used to calculate the final
-    // color a lower value result in beteter performance and lower quality
-    // results. We can retrieve properties of physical device
-    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    // specifies which coordinate system you want to use to address
-    // texels in an image.
-    // real-world apps use normalized coordinates because its possible
-    // to usess texture of varying resolutions on same coordinates.
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerInfo.mipLodBias = 0.0f;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
-
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create texture sampler!");
-    }
+    VT::CreateTextureSamplerOptions options { device, physicalDevice };
+    textureSampler = VT::CreateTextureImageSampler(options);
   }
 
   void load_model() {
@@ -762,20 +731,7 @@ private:
   }
 
   void create_uniform_buffers() {
-    VkDeviceSize bufferSize = sizeof(VT::UniformBufferObject);
-
-    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      VT::CreateBuffer(bufferSize,
-                       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                       uniformBuffers[i],
-                       uniformBuffersMemory[i],
-                       device,
-                       physicalDevice);
-    }
+    
   }
 
   void create_descriptor_pool() {
