@@ -12,6 +12,7 @@
 # define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+#include "buffer.h"
 #include "command_buffer.h"
 
 namespace VT {
@@ -25,8 +26,7 @@ struct CreateUniformBufferOptions {
   int max_frames_in_flight;
   VkDevice device;
   VkPhysicalDevice physical_device;
-  std::vector<VkBuffer> uniform_buffers;
-  std::vector<VkDeviceMemory> uniform_buffers_memory;
+  
 };
 
 struct UnformBufferInfo {
@@ -34,18 +34,21 @@ struct UnformBufferInfo {
   std::vector<VkDeviceMemory> uniform_buffers_memory;
 };
 
-void CreateUniformBuffers(CreateUniformBufferOptions& options) {
+void CreateUniformBuffers(
+    CreateUniformBufferOptions& options, 
+    std::vector<VkBuffer>& uniform_buffers,
+    std::vector<VkDeviceMemory>& uniform_buffers_memory) {
   VkDeviceSize bufferSize = sizeof(VT::UniformBufferObject);
 
-  options.uniform_buffers.resize(options.max_frames_in_flight);
-  options.uniform_buffers_memory.resize(options.max_frames_in_flight);
+  uniform_buffers.resize(options.max_frames_in_flight);
+  uniform_buffers_memory.resize(options.max_frames_in_flight);
 
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+  for (size_t i = 0; i < options.max_frames_in_flight; i++) {
     VT::CreateBuffer(bufferSize,
                       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                      options.uniform_buffers[i],
-                      options.uniform_buffers_memory[i],
+                      uniform_buffers[i],
+                      uniform_buffers_memory[i],
                       options.device,
                       options.physical_device);
   }
