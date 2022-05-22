@@ -10,6 +10,33 @@
 
 namespace VT {
 
+struct CreateDescriptorPoolOptions {
+  VkDevice device;
+  int max_frames_in_flight;
+};
+
+void CreateDescriptorPools(CreateDescriptorPoolOptions& options, VkDescriptorPool& descriptor_pool) {
+  std::array<VkDescriptorPoolSize, 2> poolSizes{};
+  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSizes[0].descriptorCount = static_cast<uint32_t>(options.max_frames_in_flight);
+
+  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  poolSizes[1].descriptorCount = static_cast<uint32_t>(options.max_frames_in_flight);
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  // allocate a descriptor for every frame
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
+  // We need to specify the maximum bumber of descriptor sets
+  // that may be allocated.
+  poolInfo.maxSets = static_cast<uint32_t>(options.max_frames_in_flight);
+
+  if (vkCreateDescriptorPool(options.device, &poolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create descriptor pool!");
+  }
+}
+
 struct CreateDescriptorSetOptions {
   VkDevice device;
   VkDescriptorSetLayout descriptor_set_layout;
