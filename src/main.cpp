@@ -251,7 +251,7 @@ private:
   }
 
   void create_instance() {
-    if (enableValidationLayers && !check_validation_layer_support()) {
+    if (enableValidationLayers && !CheckValidationLayerSupport(validationLayers)) {
       throw std::runtime_error("validation layers requested, but not available!");
     }
 
@@ -905,31 +905,6 @@ private:
     }
 
     return extensions;
-  }
-
-  bool check_validation_layer_support() {
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-      bool layerFound = false;
-
-      for (const auto& layerProperties : availableLayers) {
-        if (strcmp(layerName, layerProperties.layerName) == 0) {
-          layerFound = true;
-          break;
-        }
-      }
-
-      if (!layerFound) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   bool has_stensil_component(VkFormat format) {
