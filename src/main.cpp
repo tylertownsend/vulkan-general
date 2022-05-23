@@ -462,7 +462,9 @@ private:
 
   void create_depth_resources() {
 
-    VkFormat depthFormat = find_depth_format();
+    // TODO: find_depth_format should probably be initialied before this and renderpass
+    // are called.
+    VkFormat depthFormat = VT::find_depth_format(physicalDevice);
 
     VT::CreateImageOptions imageOptions(
       swapChainExtent.width,
@@ -929,43 +931,6 @@ private:
 
     return true;
   }
-
-  VkFormat find_depth_format() {
-    return find_supported_format(
-        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-    );
-  }
-
-  /**
-   * @brief Takes a list of candidates from most desirable to least desirable and
-   * returns the first one that is supported.
-   * 
-   * @param candidates 
-   * @param tiling 
-   * @param features 
-   * @return VkFormat The most desirable supported format.
-   */
-  VkFormat find_supported_format(
-      const std::vector<VkFormat>& candidates, 
-      VkImageTiling tiling,
-      VkFormatFeatureFlags features) {
-
-    for (auto format : candidates) {
-      VkFormatProperties props;
-
-      vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-
-      if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features)) {
-        return format;
-      } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-        return format;
-      }
-    }
-    throw std::runtime_error("failed to find supported format!");
-  }
-
 
   bool has_stensil_component(VkFormat format) {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
