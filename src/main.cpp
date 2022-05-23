@@ -267,7 +267,8 @@ private:
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    auto extensions = get_required_extensions();
+    // TODO: initialize the required extensions and store them.
+    auto extensions = VT::get_required_extensions(enableValidationLayers);
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -318,7 +319,7 @@ private:
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
     for (const auto& device : devices) {
-      auto queue_family_indices = is_device_suitable(device);
+      auto queue_family_indices = VT::IsDeviceSuitable(device, surface, deviceExtensions, enableValidationLayers);
       if (queue_family_indices.IsComplete()) {
         physicalDevice = device;
         _indices = queue_family_indices;
@@ -856,58 +857,7 @@ private:
     }
   }
 
-  VT::QueueFamilyIndices is_device_suitable(VkPhysicalDevice device) {
-    VT::QueueFamilyIndices indices = VT::FindQueueFamilies(device, surface);
-
-    VkPhysicalDeviceFeatures supportedFeatures;
-    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-    bool extensionsSupported = check_device_extension_support(device);
-    bool swapChainAdequate = VT::CheckSwapChainAdequate(extensionsSupported, device, surface);
-
-    if (indices.IsComplete() && 
-        extensionsSupported && 
-        swapChainAdequate && 
-        supportedFeatures.samplerAnisotropy) {
-      return indices;
-    } else {
-      VT::QueueFamilyIndices incomplete_indices;
-      return incomplete_indices;
-    }
-  }
-
-  bool check_device_extension_support(VkPhysicalDevice device) {
-    uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-    for (const auto& extension : availableExtensions) {
-      requiredExtensions.erase(extension.extensionName);
-    }
-
-    return requiredExtensions.empty();
-  }
-
-
-  std::vector<const char*> get_required_extensions() {
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    if (enableValidationLayers) {
-      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    return extensions;
-  }
-
-  bool has_stensil_component(VkFormat format) {
+    bool has_stensil_component(VkFormat format) {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
   }
 };

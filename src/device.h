@@ -7,6 +7,9 @@
 #include <optional>
 #include <set>
 
+#include "queue_families.h"
+#include "swapchain.h"
+
 // const std::vector<const char*> deviceExtensions = {
 //   VK_KHR_SWAPCHAIN_EXTENSION_NAME
 // };
@@ -40,6 +43,56 @@ uint32_t FindMemoryType(
     }
   }
   throw std::runtime_error("failed to find suitable memory type!");
+}
+
+std::vector<const char*> get_required_extensions(bool enable_validation_layers) {
+  uint32_t glfwExtensionCount = 0;
+  const char** glfwExtensions;
+  glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+  std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+  if (enable_validation_layers) {
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  }
+
+  return extensions;
+}
+
+bool CheckDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<const char*>& device_extensions, bool enable_validation_layers) {
+  uint32_t extensionCount;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+  std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+  std::set<std::string> requiredExtensions(device_extensions.begin(), device_extensions.end());
+
+  for (const auto& extension : availableExtensions) {
+    requiredExtensions.erase(extension.extensionName);
+  }
+
+  return requiredExtensions.empty();
+}
+
+VT::QueueFamilyIndices IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*>& device_extensions, bool enable_validation_layers) {
+  VT::QueueFamilyIndices indices = VT::FindQueueFamilies(device, surface);
+
+  VkPhysicalDeviceFeatures supportedFeatures;
+  vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+  bool extensionsSupported = VT::CheckDeviceExtensionSupport(device, device_extensions, enable_validation_layers);
+  bool swapChainAdequate = VT::CheckSwapChainAdequate(extensionsSupported, device, surface);
+
+  if (indices.IsComplete() && 
+      extensionsSupported && 
+      swapChainAdequate && 
+      supportedFeatures.samplerAnisotropy) {
+    return indices;
+  } else {
+    VT::QueueFamilyIndices incomplete_indices;
+    return incomplete_indices;
+  }
 }
 }
 
