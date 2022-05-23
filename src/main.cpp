@@ -97,6 +97,7 @@ private:
   VkSurfaceKHR surface;
 
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VT::QueueFamilyIndices _indices;
   VkDevice device;
 
   VkQueue graphicsQueue;
@@ -317,8 +318,10 @@ private:
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
     for (const auto& device : devices) {
-      if (is_device_suitable(device)) {
+      auto queue_family_indices = is_device_suitable(device);
+      if (queue_family_indices.IsComplete()) {
         physicalDevice = device;
+        _indices = queue_family_indices;
         break;
       }
     }
@@ -329,8 +332,7 @@ private:
   }
 
   void create_logical_device() {
-
-    QueueFamilyIndices indices = find_queue_families(physicalDevice);
+    VT::QueueFamilyIndices indices = _indices;
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
@@ -396,108 +398,6 @@ private:
     swapChainExtent = swapchainInfo.swapchain_extent;
   }
 
-  bool is_device_suitable(VkPhysicalDevice device) {
-    QueueFamilyIndices indices = find_queue_families(device);
-
-    VkPhysicalDeviceFeatures supportedFeatures;
-    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-    bool extensionsSupported = check_device_extension_support(device);
-    bool swapChainAdequate = VT::CheckSwapChainAdequate(extensionsSupported, device, surface);
-
-    return indices.IsComplete() && 
-           extensionsSupported && 
-           swapChainAdequate && 
-           supportedFeatures.samplerAnisotropy;
-  }
-
-  QueueFamilyIndices find_queue_families(VkPhysicalDevice device) {
-    QueueFamilyIndices indices;
-
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-      if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-        indices.graphicsFamily = i;
-      }
-
-      VkBool32 presentSupport = false;
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-      if (presentSupport) {
-        indices.presentFamily = i;
-      }
-
-      if (indices.IsComplete()) {
-        break;
-      }
-
-      i++;
-    }
-
-    return indices;
-  }
-
-  bool check_device_extension_support(VkPhysicalDevice device) {
-    uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-    for (const auto& extension : availableExtensions) {
-      requiredExtensions.erase(extension.extensionName);
-    }
-
-    return requiredExtensions.empty();
-  }
-
-
-  std::vector<const char*> get_required_extensions() {
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    if (enableValidationLayers) {
-      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    return extensions;
-  }
-
-  bool check_validation_layer_support() {
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-      bool layerFound = false;
-
-      for (const auto& layerProperties : availableLayers) {
-        if (strcmp(layerName, layerProperties.layerName) == 0) {
-          layerFound = true;
-          break;
-        }
-      }
-
-      if (!layerFound) {
-        return false;
-      }
-    }
-
-    return true;
-  }
 
   void create_render_pass() {
     VT::RenderPassOptions options{swapChainImageFormat, device, physicalDevice};
@@ -544,7 +444,7 @@ private:
   }
 
   void create_command_pool() {
-    QueueFamilyIndices queueFamilyIndices = find_queue_families(physicalDevice);
+    VT::QueueFamilyIndices queueFamilyIndices = _indices;
 
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -591,45 +491,6 @@ private:
                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   }
 
-  /**
-   * @brief Takes a list of candidates from most desirable to least desirable and
-   * returns the first one that is supported.
-   * 
-   * @param candidates 
-   * @param tiling 
-   * @param features 
-   * @return VkFormat The most desirable supported format.
-   */
-  VkFormat find_supported_format(
-      const std::vector<VkFormat>& candidates, 
-      VkImageTiling tiling,
-      VkFormatFeatureFlags features) {
-
-    for (auto format : candidates) {
-      VkFormatProperties props;
-
-      vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-
-      if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features)) {
-        return format;
-      } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-        return format;
-      }
-    }
-    throw std::runtime_error("failed to find supported format!");
-  }
-
-  VkFormat find_depth_format() {
-    return find_supported_format(
-        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-    );
-  }
-
-  bool has_stensil_component(VkFormat format) {
-    return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-  }
 
   void create_texture_image() {
     VT::CreateTextureImageOptions options{
@@ -759,84 +620,8 @@ private:
   }
 
   void create_command_buffers() {
-    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
-    // The level parameter specifies if the allocated command buffers are
-    // primary or secondary command buffers.
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-
-    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-      throw std::runtime_error("failed to allocate command buffers!");
-    }
-  }
-
-  void record_command_buffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    // The flags parameter specifies how we're going to use the command buffer. The following values are available:
-    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT: The command buffer will be rerecorded right after executing it once.
-    // VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT: This is a secondary command buffer that will be entirely within a single render pass.
-    // VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT: The command buffer can be resubmitted while it is also already pending execution.
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr; // Optional
-
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("failed to begin recording command buffer!");
-    }
-
-    // The first parameters are the render pass itself and the attachments to bind. We created a framebuffer for
-    // each swap chain image where it is specified as a color attachment.
-    // Thus we need to bind the framebuffer for the swapchain image we want to draw to. 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    // The render area defines where shader loads and stores will take place.
-    // The pixels outside this region will have undefined values.
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = swapChainExtent;
-
-    // The last two parameters define the clear values to use for
-    // VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color= {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
-
-    // The first parameter for every command is always the command buffer to record the
-    // command to. The second parameter specifies the details of the render pass we've
-    // just provided. The final parameter controls how the drawing commands within the render
-    // pass will be provided. 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-    // bind vertex buffer during rendering operations
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-    // Descriptor sets can be used in graphics or compute pipelines so we need to specify
-    // which one to use.
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-    // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
-    // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
-    // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
-    // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-    vkCmdEndRenderPass(commandBuffer);
-
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-      throw std::runtime_error("failed to record command buffer!");
-    }
+    VT::CreateCommandBuffersOptions options { device, commandPool, MAX_FRAMES_IN_FLIGHT};
+    VT::CreateCommandBuffers(options, commandBuffers);
   }
 
   void create_sync_objects() {
@@ -944,25 +729,69 @@ private:
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
+  void record_command_buffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    // The flags parameter specifies how we're going to use the command buffer. The following values are available:
+    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT: The command buffer will be rerecorded right after executing it once.
+    // VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT: This is a secondary command buffer that will be entirely within a single render pass.
+    // VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT: The command buffer can be resubmitted while it is also already pending execution.
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = nullptr; // Optional
 
-  void cleanup_swap_chain() {
-    vkDestroyImageView(device, depthImageView, nullptr);
-    vkDestroyImage(device, depthImage, nullptr);
-    vkFreeMemory(device, depthImageMemory, nullptr);
-
-    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
-      vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyRenderPass(device, renderPass, nullptr);
+    // The first parameters are the render pass itself and the attachments to bind. We created a framebuffer for
+    // each swap chain image where it is specified as a color attachment.
+    // Thus we need to bind the framebuffer for the swapchain image we want to draw to. 
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    // The render area defines where shader loads and stores will take place.
+    // The pixels outside this region will have undefined values.
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
 
-    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-      vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+    // The last two parameters define the clear values to use for;
+    // VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color= {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    // The first parameter for every command is always the command buffer to record the
+    // command to. The second parameter specifies the details of the render pass we've
+    // just provided. The final parameter controls how the drawing commands within the render
+    // pass will be provided. 
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    // bind vertex buffer during rendering operations
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // Descriptor sets can be used in graphics or compute pipelines so we need to specify
+    // which one to use.
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+    // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
+    // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
+    // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
+    // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+      throw std::runtime_error("failed to record command buffer!");
     }
-
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
   }
 
   // However, the disadvantage of this approach is that we need to stop all rendering before
@@ -994,6 +823,26 @@ private:
     create_command_buffers();
   }
 
+  void cleanup_swap_chain() {
+    vkDestroyImageView(device, depthImageView, nullptr);
+    vkDestroyImage(device, depthImage, nullptr);
+    vkFreeMemory(device, depthImageMemory, nullptr);
+
+    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+      vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+    }
+
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+      vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
+  }
+
   // Minimization results in a framebuffer of size 0.
   // Tutorial mode :) - we pause process until window is in foreground;
   void handle_minimization() {
@@ -1004,7 +853,123 @@ private:
       glfwWaitEvents();
     }
   }
-  
+
+  VT::QueueFamilyIndices is_device_suitable(VkPhysicalDevice device) {
+    VT::QueueFamilyIndices indices = VT::FindQueueFamilies(device, surface);
+
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+    bool extensionsSupported = check_device_extension_support(device);
+    bool swapChainAdequate = VT::CheckSwapChainAdequate(extensionsSupported, device, surface);
+
+    if (indices.IsComplete() && 
+        extensionsSupported && 
+        swapChainAdequate && 
+        supportedFeatures.samplerAnisotropy) {
+      return indices;
+    } else {
+      VT::QueueFamilyIndices incomplete_indices;
+      return incomplete_indices;
+    }
+  }
+
+  bool check_device_extension_support(VkPhysicalDevice device) {
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+    for (const auto& extension : availableExtensions) {
+      requiredExtensions.erase(extension.extensionName);
+    }
+
+    return requiredExtensions.empty();
+  }
+
+
+  std::vector<const char*> get_required_extensions() {
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers) {
+      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    return extensions;
+  }
+
+  bool check_validation_layer_support() {
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    for (const char* layerName : validationLayers) {
+      bool layerFound = false;
+
+      for (const auto& layerProperties : availableLayers) {
+        if (strcmp(layerName, layerProperties.layerName) == 0) {
+          layerFound = true;
+          break;
+        }
+      }
+
+      if (!layerFound) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  VkFormat find_depth_format() {
+    return find_supported_format(
+        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    );
+  }
+
+  /**
+   * @brief Takes a list of candidates from most desirable to least desirable and
+   * returns the first one that is supported.
+   * 
+   * @param candidates 
+   * @param tiling 
+   * @param features 
+   * @return VkFormat The most desirable supported format.
+   */
+  VkFormat find_supported_format(
+      const std::vector<VkFormat>& candidates, 
+      VkImageTiling tiling,
+      VkFormatFeatureFlags features) {
+
+    for (auto format : candidates) {
+      VkFormatProperties props;
+
+      vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+      if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features)) {
+        return format;
+      } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+        return format;
+      }
+    }
+    throw std::runtime_error("failed to find supported format!");
+  }
+
+
+  bool has_stensil_component(VkFormat format) {
+    return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+  }
 };
 
 int main() {

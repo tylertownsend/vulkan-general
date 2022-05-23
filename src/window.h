@@ -1,18 +1,5 @@
-#define GLFW_INCLUDE_VULKAN
+#pragma once
 #include <GLFW/glfw3.h>
-
-#include <chrono>
-#include <iostream>
-#include <filesystem>
-#include <fstream>
-#include <stdexcept>
-#include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <optional>
-#include <set>
-#include <algorithm>
-#include <unordered_map>
 
 struct WindowOptions {
   int width;
@@ -33,3 +20,33 @@ GLFWwindow* CreateWindow(WindowOptions& options) {
   glfwSetFramebufferSizeCallback(window, options.framebuffer_resize_callback);
   return window;
 }
+
+namespace phx {
+
+class Window {
+ private:
+  WindowOptions* _options;
+  GLFWwindow* _window;
+
+ public:
+  Window(WindowOptions* options) {
+    _options = options;
+    _window = CreateWindow(*_options);
+  }
+
+  ~Window() {
+    delete _options;
+    glfwDestroyWindow(_window);
+    glfwTerminate();
+  }
+
+  int WindowShouldClose() {
+    glfwWindowShouldClose(_window);
+  }
+
+  void PollEvents() {
+    glfwPollEvents();
+  }
+};
+
+} // phx

@@ -3,11 +3,35 @@
 #include <GLFW/glfw3.h>
 
 #include "device.h"
+#include <vector>
 
 
 namespace VT {
 VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool command_pool);
 void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkDevice device, VkCommandPool command_pool, VkQueue graphics_queue);
+
+struct CreateCommandBuffersOptions {
+  VkDevice device;
+  VkCommandPool command_pool;
+  int max_frames_in_flight;
+};
+
+void CreateCommandBuffers(CreateCommandBuffersOptions& options, std::vector<VkCommandBuffer>& command_buffers) {
+  command_buffers.resize(options.max_frames_in_flight);
+
+  VkCommandBufferAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  allocInfo.commandPool = options.command_pool;
+  // The level parameter specifies if the allocated command buffers are
+  // primary or secondary command buffers.
+  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  allocInfo.commandBufferCount = (uint32_t) command_buffers.size();
+
+  if (vkAllocateCommandBuffers(options.device, &allocInfo, command_buffers.data()) != VK_SUCCESS) {
+    throw std::runtime_error("failed to allocate command buffers!");
+  }
+}
+
 struct CopyBufferOptions {
   VkDevice device;
   VkCommandPool command_pool;

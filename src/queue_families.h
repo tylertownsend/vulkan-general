@@ -5,6 +5,8 @@
 #include <optional>
 #include <vector>
 
+namespace VT {
+
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphicsFamily;
   std::optional<uint32_t> presentFamily;
@@ -14,7 +16,7 @@ struct QueueFamilyIndices {
   }
 };
 
-QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
+QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
   QueueFamilyIndices indices;
 
   uint32_t queueFamilyCount = 0;
@@ -45,3 +47,4 @@ QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& sur
 
   return indices;
 }
+} //VT
