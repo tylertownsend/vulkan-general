@@ -416,50 +416,6 @@ private:
     pipelineLayout = result.pipeline_layout;
   }
 
-  void create_frame_buffers() {
-    swapChainFramebuffers.resize(swapChainImageViews.size());
-
-    for (size_t i = 0; i < swapChainImageViews.size(); i++ ) {
-
-      std::array<VkImageView, 2> attachments = {
-        swapChainImageViews[i],
-        depthImageView
-      };
-
-      VkFramebufferCreateInfo framebufferInfo{};
-      framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-      // The attachmentCount and pAttachments parameters specify the VkImageView objects that should
-      // be bound to the respective attachment descriptions in the render pass pAttachment array.
-      framebufferInfo.renderPass = renderPass;
-      framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-      framebufferInfo.pAttachments = attachments.data();;
-      framebufferInfo.width = swapChainExtent.width;
-      framebufferInfo.height = swapChainExtent.height;
-      framebufferInfo.layers = 1;
-
-      if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create framebuffer!");
-      }
-    }
-  }
-
-  void create_command_pool() {
-    VT::QueueFamilyIndices queueFamilyIndices = _indices;
-
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    // We will be recording a command buffer every frame, so we want to be able to
-    // reset and rerecord over it. Thus, we need to set the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag bit for our command pool.
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    
-    // Command buffers are executed by submitting them on one of the device queues,
-    // like the graphics and presentation queues we retrieved
-    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create command pool!");
-    }
-  }
-
   void create_depth_resources() {
 
     // TODO: find_depth_format should probably be initialied before this and renderpass
@@ -493,6 +449,27 @@ private:
                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   }
 
+  void create_command_pool() {
+    VT::QueueFamilyIndices queueFamilyIndices = _indices;
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // We will be recording a command buffer every frame, so we want to be able to
+    // reset and rerecord over it. Thus, we need to set the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag bit for our command pool.
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    
+    // Command buffers are executed by submitting them on one of the device queues,
+    // like the graphics and presentation queues we retrieved
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create command pool!");
+    }
+  }
+
+  void create_frame_buffers() {
+    VT::CreateFrameBuffersOptions options {device, renderPass, swapChainExtent, swapChainImageViews};
+    VT::CreateFrameBuffers(options, depthImageView, swapChainFramebuffers);
+  }
 
   void create_texture_image() {
     VT::CreateTextureImageOptions options{

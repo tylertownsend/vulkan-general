@@ -125,6 +125,43 @@ SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
   };
 }
 
+struct CreateFrameBuffersOptions {
+  VkDevice device;
+  VkRenderPass render_pass;
+  VkExtent2D swap_chain_extent;
+  std::vector<VkImageView> swap_chain_image_views;
+};
+
+void CreateFrameBuffers(
+    CreateFrameBuffersOptions& options,
+    VkImageView& depth_image_view,
+    std::vector<VkFramebuffer>& swap_chain_frame_buffers) {
+  swap_chain_frame_buffers.resize(options.swap_chain_image_views.size());
+
+  for (size_t i = 0; i < options.swap_chain_image_views.size(); i++ ) {
+
+    std::array<VkImageView, 2> attachments = {
+      options.swap_chain_image_views[i],
+      depth_image_view
+    };
+
+    VkFramebufferCreateInfo framebufferInfo{};
+    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    // The attachmentCount and pAttachments parameters specify the VkImageView objects that should
+    // be bound to the respective attachment descriptions in the render pass pAttachment array.
+    framebufferInfo.renderPass = options.render_pass;
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments = attachments.data();;
+    framebufferInfo.width = options.swap_chain_extent.width;
+    framebufferInfo.height = options.swap_chain_extent.height;
+    framebufferInfo.layers = 1;
+
+    if (vkCreateFramebuffer(options.device, &framebufferInfo, nullptr, &swap_chain_frame_buffers[i]) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create framebuffer!");
+    }
+  }
+}
+
 bool CheckSwapChainAdequate(bool extensionsSupported, VkPhysicalDevice& device, VkSurfaceKHR& surface) {
   if (extensionsSupported) {
     SwapChainSupportDetails swapChainSupport = query_swap_chain_support_details(device, surface);
