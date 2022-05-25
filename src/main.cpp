@@ -40,6 +40,7 @@
 #include "descriptor.h"
 #include "model.h"
 #include "synchronization.h"
+#include "indices.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -171,6 +172,7 @@ private:
     create_surface();
     pick_physical_device();
     create_logical_device();
+
     create_swapchain();
     create_image_views();
     create_render_pass();
@@ -181,9 +183,11 @@ private:
     // moving frame buffers to make sure it is called after the depth image
     // view has ben created
     create_frame_buffers();
+
     create_texture_image();
     create_texture_image_view();
     create_texture_sampler();
+
     load_model();
     create_vertex_buffer();
     create_index_buffer();
@@ -191,6 +195,7 @@ private:
     create_descriptor_pool();
     create_descriptor_sets();
     create_command_buffers();
+
     create_sync_objects();
   }
 
@@ -399,7 +404,6 @@ private:
     swapChainExtent = swapchainInfo.swapchain_extent;
   }
 
-
   void create_render_pass() {
     VT::RenderPassOptions options{swapChainImageFormat, device, physicalDevice};
     renderPass = VT::CreateRenderPass(options);
@@ -506,32 +510,8 @@ private:
   }
 
   void create_index_buffer() {
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    VT::CreateBuffer(bufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    stagingBuffer,
-                    stagingBufferMemory, device, physicalDevice);
-
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, indices.data(), (size_t) bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
-
-    VT::CreateBuffer(bufferSize,
-                        // use index bit instead of vertex bit
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        indexBuffer,
-                        indexBufferMemory, device, physicalDevice);
-    VT::CopyBufferOptions copy_buffer_options {device, commandPool, graphicsQueue};
-    VT::CopyBuffer(copy_buffer_options, stagingBuffer, indexBuffer, bufferSize);
-
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
+    VT::CreateIndexBufferOptions options{device, physicalDevice, commandPool, graphicsQueue };
+    VT::CreateIndexBuffer(options, indices, indexBuffer, indexBufferMemory);
   }
 
   void create_uniform_buffers() {
