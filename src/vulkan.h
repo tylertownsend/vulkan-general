@@ -1,7 +1,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <string.h>
 #include <stdexcept>
+#include <memory>
 #include <vector>
 
 #include "surface.h"
@@ -18,13 +20,15 @@ const std::vector<const char*> validationLayers = {
   "VK_LAYER_KHRONOS_validation"
 };
 
+namespace VT {
+
 struct VulkanInstanceInfo {
-  VkInstance* instance;
-  VkDebugUtilsMessengerEXT* debug_messenger;
+  const VkInstance* instance;
+  const VkDebugUtilsMessengerEXT* debug_messenger;
   GLFWwindow* window;
-  VkSurfaceKHR* surface;
-  VkPhysicalDevice* physical_device;
-  VkDevice* device;
+  const VkSurfaceKHR* surface;
+  const VkPhysicalDevice* physical_device;
+  const VkDevice* device;
 };
 
 struct VulkanOptions {
@@ -44,35 +48,35 @@ struct VulkanOptions {
 };
 
 class Vulkan {
-  VulkanInstanceInfo _instance_info;
-  VulkanOptions _options;
+  std::unique_ptr<VulkanInstanceInfo> _instance_info;
+  std::unique_ptr<VulkanOptions> _options;
 
-  Vulkan(const VulkanOptions options, const VulkanInstanceInfo& instance_info) {
-    _options = options;
-    _instance_info = instance_info;
+  Vulkan(std::unique_ptr<VulkanOptions>&& options, std::unique_ptr<VulkanInstanceInfo>&& instance_info) {
+    _options = std::move(options);
+    _instance_info = std::move(instance_info);
   }
 
   ~Vulkan() {
-    vkDestroyDevice(*_instance_info.device, nullptr);
+    auto info = *_instance_info.get();
+    vkDestroyDevice(*info.device, nullptr);
 
     if (enableValidationLayers) {
-      DestroyDebugUtilsMessengerEXT(*_instance_info.instance, *_instance_info.debug_messenger, nullptr);
+      DestroyDebugUtilsMessengerEXT(*info.instance, *info.debug_messenger, nullptr);
     }
 
-    vkDestroySurfaceKHR(*_instance_info.instance, *_instance_info.surface, nullptr);
-    vkDestroyInstance(*_instance_info.instance, nullptr);
+    vkDestroySurfaceKHR(*info.instance, *info.surface, nullptr);
+    vkDestroyInstance(*info.instance, nullptr);
 
-    glfwDestroyWindow(_instance_info.window);
+    glfwDestroyWindow(info.window);
 
     glfwTerminate();
-
   }
 
 public:
   Vulkan* CreateInstance(const VulkanOptions options) {
     auto instance = CreateVkInstance(options);
 
-    auto debug_messenger = SetupDebugMessenger(instance, enableValidationLayers);
+    auto debug_messenger = setup_debug_messenger(*instance, enableValidationLayers);
 
     WindowOptions window_options{};
     window_options.height = 600;
@@ -89,13 +93,14 @@ public:
 
     auto surface = VulkanSurface::CreateSurface(surface_options);
 
-    VulkanInstanceInfo instanceInfo{
+    auto instance_info = std::make_unique<VulkanInstanceInfo>(new VulkanInstanceInfo{
       instance,
       debug_messenger,
       window,
       surface
-    };
-    return new Vulkan(options, instanceInfo);
+    });
+
+    return new Vulkan(options, instance_info);
   }
 
 private:
@@ -140,6 +145,19 @@ private:
     return instance;
   }
 
+  VkDebugUtilsMessengerEXT* setup_debug_messenger(VkInstance instance, bool enable_validation_layers) {
+    VkDebugUtilsMessengerEXT* debug_messenger;
+    if (!enableValidationLayers) return;
+
+    VkDebugUtilsMessengerCreateInfoEXT createInfo;
+    PopulateDebugMessengerCreateInfo(createInfo);
+
+    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, debug_messenger) != VK_SUCCESS) {
+      throw std::runtime_error("failed to set up debug messenger!");
+    }
+    return debug_messenger;
+  }
+
   std::vector<const char*> get_required_extensions(const char** extensions_array, uint32_t extension_count) {
     std::vector<const char*> extensions(extensions_array, extensions_array + extension_count);
 
@@ -176,3 +194,4 @@ private:
     return true;
   }
 };
+} // VT
