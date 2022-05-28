@@ -65,9 +65,11 @@ SwapchainInfo CreateSwapchain(SwapChainOptions& options) {
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-  QueueFamilyIndices indices = FindQueueFamilies(
+  QueueFamilyIndices indices;
+  FindQueueFamilies(
     options.physical_device,
-    options.surface);
+    options.surface,
+    indices);
   uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
   // If the graphics queue family and presentation queue family are the same, which will be

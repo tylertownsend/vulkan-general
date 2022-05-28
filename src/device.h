@@ -62,7 +62,8 @@ bool CheckDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<cons
 }
 
 VT::QueueFamilyIndices IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*>& device_extensions, bool enable_validation_layers) {
-  VT::QueueFamilyIndices indices = VT::FindQueueFamilies(device, surface);
+  VT::QueueFamilyIndices indices;
+  VT::FindQueueFamilies(device, surface, indices);
 
   VkPhysicalDeviceFeatures supportedFeatures;
   vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
@@ -81,9 +82,8 @@ VT::QueueFamilyIndices IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR su
   }
 }
 
-VkPhysicalDevice* PickPhysicalDevice(const VkInstance instance, const VkSurfaceKHR surface, const std::vector<const char*>& device_extensions, bool enable_validation_layers) {
+VT::QueueFamilyIndices PickPhysicalDevice(const VkInstance instance, const VkSurfaceKHR surface, const std::vector<const char*>& device_extensions, bool enable_validation_layers, VkPhysicalDevice& physical_device) {
   uint32_t deviceCount = 0;
-  VkPhysicalDevice* physical_device = VK_NULL_HANDLE;
   vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
   if (deviceCount == 0) {
@@ -96,14 +96,15 @@ VkPhysicalDevice* PickPhysicalDevice(const VkInstance instance, const VkSurfaceK
   for (auto& device : devices) {
     auto indices = IsDeviceSuitable(device, surface, device_extensions, enable_validation_layers);
     if (indices.IsComplete()) {
-      physical_device = &device;
-      break;
+      physical_device = device;
+      return indices;
     }
   }
 
   if (physical_device == VK_NULL_HANDLE) {
     throw std::runtime_error("failed to find a suitable GPU!");
   }
-  return physical_device;
+  VT::QueueFamilyIndices indices;
+  return indices;
 }
 }

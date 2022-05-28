@@ -14,16 +14,16 @@
 #include "window.h"
 
 #ifdef NDEBUG
-const bool enableValidationLayers = true;
+const bool ENABLE_VALIDATION_LAYERS = true;
 #else
-const bool enableValidationLayers = false;
+const bool ENABLE_VALIDATION_LAYERS = false;
 #endif
 
-const std::vector<const char*> deviceExtensions = {
+const std::vector<const char*> DEVICE_EXTENSIONS = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-const std::vector<const char*> validationLayers = {
+const std::vector<const char*> VALIDATION_LAYERS = {
   "VK_LAYER_KHRONOS_validation"
 };
 
@@ -35,7 +35,7 @@ struct VulkanInstanceInfo {
   const VkSurfaceKHR* surface;
   const VkPhysicalDevice* physical_device;
   const VkDevice* device;
-  VT::QueueFamilyIndices queue_familiy_indices;
+  VT::QueueFamilyIndices queue_family_indices;
   VkQueue* graphics_queue;
   VkQueue* present_queue;
 };
@@ -81,7 +81,7 @@ public:
     auto info = *_instance_info.get();
     vkDestroyDevice(*info.device, nullptr);
 
-    if (enableValidationLayers) {
+    if (ENABLE_VALIDATION_LAYERS) {
       DestroyDebugUtilsMessengerEXT(*info.instance, *info.debug_messenger, nullptr);
     }
 
@@ -113,8 +113,8 @@ public:
     return vkDeviceWaitIdle(*this->_instance_info.get()->device);
   }
 
-  const VT::QueueFamilyIndices& GetQueueFamiliyIndices() {
-    return this->_instance_info->queue_familiy_indices;
+  const VT::QueueFamilyIndices& GetQueueFamilyIndices() {
+    return this->_instance_info->queue_family_indices;
   }
 
   const VkQueue GetGraphicsQueue() {
@@ -126,27 +126,34 @@ public:
   }
 
   static std::unique_ptr<Vulkan> CreateInstance(const VulkanOptions& options) {
-    auto instance = CreateVkInstance(options);
+    VkInstance* instance;
+    CreateVkInstance(options, instance);
 
-    auto debug_messenger = setup_debug_messenger(*instance, enableValidationLayers);
+    VkDebugUtilsMessengerEXT* debug_messenger;
+    setup_debug_messenger(*instance, ENABLE_VALIDATION_LAYERS, debug_messenger);
 
     VulkanSurfaceOptions surface_options {
       instance,
       options.window
     };
 
-    auto surface = VulkanSurface::CreateSurface(surface_options);
+    VkSurfaceKHR* surface;
+    VulkanSurface::CreateSurface(surface_options, surface);
 
-    auto physical_device = VT::PickPhysicalDevice(*instance, *surface, deviceExtensions, enableValidationLayers);
+    
+    VkPhysicalDevice* physical_device = VK_NULL_HANDLE;
+    VT::PickPhysicalDevice(*instance, *surface, DEVICE_EXTENSIONS, ENABLE_VALIDATION_LAYERS, *physical_device);
 
-    auto queue_familiy_indices = VT::FindQueueFamilies(*physical_device, *surface);
+    QueueFamilyIndices queue_family_indices;
+    VT::FindQueueFamilies(*physical_device, *surface, queue_family_indices);
 
-    auto device = VT::CreateLogicalDevice(queue_familiy_indices, *physical_device, validationLayers, enableValidationLayers, deviceExtensions);
+    VkDevice* device;
+    VT::CreateLogicalDevice(queue_family_indices, *physical_device, VALIDATION_LAYERS, ENABLE_VALIDATION_LAYERS, DEVICE_EXTENSIONS, device);
 
     VkQueue* graphics_queue;
-    VT::GetDeviceQueue(*device, queue_familiy_indices.graphicsFamily.value(), *graphics_queue);
+    VT::GetDeviceQueue(*device, queue_family_indices.graphicsFamily.value(), *graphics_queue);
     VkQueue* present_queue;
-    VT::GetDeviceQueue(*device, queue_familiy_indices.graphicsFamily.value() , *graphics_queue);
+    VT::GetDeviceQueue(*device, queue_family_indices.graphicsFamily.value() , *graphics_queue);
 
     auto instance_info = std::make_unique<VulkanInstanceInfo>(VulkanInstanceInfo{
       instance,
@@ -154,7 +161,7 @@ public:
       surface,
       physical_device,
       device,
-      queue_familiy_indices,
+      queue_family_indices,
       graphics_queue,
       present_queue
   });
@@ -164,12 +171,12 @@ public:
     return std::make_unique<Vulkan>(vulkan_options, instance_info);
   }
 
-private:
-  static VkInstance* CreateVkInstance(const VulkanOptions& options) {
-    auto extensions = get_required_extensions(deviceExtensions, deviceExtensions.size(), enableValidationLayers);
-    VkInstance* instance;
+// private:
+  static void CreateVkInstance(const VulkanOptions& options, VkInstance* instance) {
+    auto extensions = VT::get_required_extensions(ENABLE_VALIDATION_LAYERS);
+    // VkInstance* instance;
 
-    if (enableValidationLayers && !check_validation_layer_support()) {
+    if (ENABLE_VALIDATION_LAYERS && !CheckValidationLayerSupport(VALIDATION_LAYERS)) {
       throw std::runtime_error("validation layers requested, but not available!");
     }
 
@@ -188,27 +195,23 @@ private:
     createInfo.ppEnabledExtensionNames = extensions.data();
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    if (enableValidationLayers) {
-      createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-      createInfo.ppEnabledLayerNames = validationLayers.data();
-
+    if (ENABLE_VALIDATION_LAYERS) {
+      createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
+      createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
       PopulateDebugMessengerCreateInfo(debugCreateInfo);
       createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
     } else {
       createInfo.enabledLayerCount = 0;
-
       createInfo.pNext = nullptr;
     }
 
     if (vkCreateInstance(&createInfo, nullptr, instance) != VK_SUCCESS) {
       throw std::runtime_error("failed to create instance!");
     }
-    return instance;
   }
 
-  static VkDebugUtilsMessengerEXT* setup_debug_messenger(VkInstance instance, bool enable_validation_layers) {
-    VkDebugUtilsMessengerEXT* debug_messenger;
-    if (!enable_validation_layers) return VK_NULL_HANDLE;
+  static void setup_debug_messenger(VkInstance instance, bool enable_validation_layers, VkDebugUtilsMessengerEXT* debug_messenger) {
+    if (!enable_validation_layers) return;
 
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     PopulateDebugMessengerCreateInfo(createInfo);
@@ -216,44 +219,6 @@ private:
     if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, debug_messenger) != VK_SUCCESS) {
       throw std::runtime_error("failed to set up debug messenger!");
     }
-    return debug_messenger;
-  }
-
-  static std::vector<const char*> get_required_extensions(const std::vector<const char*>& extensions_array, uint32_t extension_count, bool enable_validation_layers) {
-    // std::vector<const char*> extensions(extensions_array.data(), extensions_array.size() + extension_count);
-    std::vector<const char*> extensions(extensions_array.begin(), extensions_array.end());
-
-    if (enableValidationLayers) {
-      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    return extensions;
-  }
-
-
-  static bool check_validation_layer_support() {
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-      bool layerFound = false;
-
-      for (const auto& layerProperties : availableLayers) {
-        if (strcmp(layerName, layerProperties.layerName) == 0) {
-          layerFound = true;
-          break;
-        }
-      }
-
-      if (!layerFound) {
-        return false;
-      }
-    }
-
-    return true;
   }
 };
 } // VT

@@ -1,4 +1,3 @@
-
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -18,9 +17,9 @@ namespace VT {
       const VkPhysicalDevice& physical_device,
       const std::vector<const char*>& validation_layers,
       bool enable_validation_layers,
-      const std::vector<const char*>& device_extensions) {
+      const std::vector<const char*>& device_extensions,
+      VkDevice* device) {
 
-    VkDevice* device;
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
