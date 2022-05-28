@@ -47,7 +47,7 @@ QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
   return indices;
 }
 
-void GetDeviceQueue(const VkDevice device, uint32_t queue_familiy_index, VkQueue queue) {
-  vkGetDeviceQueue(device, queue_familiy_index, 0, &queue);
+void GetDeviceQueue(const VkDevice device, uint32_t queue_familiy_index, VkQueue* queue) {
+  vkGetDeviceQueue(device, queue_familiy_index, 0, queue);
 }
 } //VT
