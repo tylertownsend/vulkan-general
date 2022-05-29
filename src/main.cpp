@@ -83,11 +83,7 @@ private:
   VkBuffer indexBuffer;
   VkDeviceMemory indexBufferMemory;
 
-  std::vector<VkBuffer> uniformBuffers;
-  std::vector<VkDeviceMemory> uniformBuffersMemory;
-
-  VkDescriptorPool descriptorPool;
-  std::vector<VkDescriptorSet> descriptorSets;
+  std::unique_ptr<VT::DescriptorSets> _descriptor_sets;
 
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -112,8 +108,6 @@ private:
     load_model();
     create_vertex_buffer();
     create_index_buffer();
-    create_uniform_buffers();
-    create_descriptor_pool();
     create_descriptor_sets();
 
     create_sync_objects();
@@ -140,13 +134,6 @@ private:
     auto device = this->_instance->GetVkDevice();
 
     this->cleanup_swap_chain();
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-      vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-    }
-
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     // desstroy descriptor set layout
     vkDestroyBuffer(device, indexBuffer, nullptr);
@@ -192,6 +179,10 @@ private:
     _depth_resources = std::make_unique<VT::DepthResources>(_instance, _command_pool, _swapchain->GetExtent());
   }
 
+  void create_texture_image() {
+    _texture_image = std::make_unique<VT::TextureView>(_instance, _command_pool);
+  }
+
   void create_frame_buffers() {
     VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), _graphics_pipeline->GetRenderPass(), _swapchain->GetExtent(), _swapchain->GetSwapChainImageViews() };
     VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
@@ -211,35 +202,8 @@ private:
     VT::CreateIndexBuffer(options, indices, indexBuffer, indexBufferMemory);
   }
 
-  void create_uniform_buffers() {
-    VT::CreateUniformBufferOptions options {MAX_FRAMES_IN_FLIGHT, this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice()};
-    VT::CreateUniformBuffers(options, uniformBuffers, uniformBuffersMemory);
-  }
-
-  void create_descriptor_pool() {
-    VT::CreateDescriptorPoolOptions options { this->_instance.get()->GetVkDevice(), MAX_FRAMES_IN_FLIGHT };
-    VT::CreateDescriptorPools(options, descriptorPool);
-  }
-
-  void create_texture_image() {
-    _texture_image = std::make_unique<VT::TextureView>(_instance, _command_pool);
-  }
-
-  // We create one descriptor set for each chain image
-  // with all the same layout.
-  // we do need copies of all the layouts because the next function
-  // expects an array matching the number of sets
   void create_descriptor_sets() {
-    VT::CreateDescriptorSetOptions options {
-      this->_instance.get()->GetVkDevice(),
-      _descriptor_set_layout->GetLayout(),
-      descriptorPool,
-      _texture_image->GetImageView(),
-      _texture_image->GetTextureSampler(),
-      uniformBuffers,
-      MAX_FRAMES_IN_FLIGHT
-    };
-    VT::CreateDescriptorSets(options, descriptorSets);
+    _descriptor_sets = std::make_unique<VT::DescriptorSets>(_instance, _descriptor_set_layout, _texture_image, MAX_FRAMES_IN_FLIGHT);
   }
 
   void create_sync_objects() {
@@ -263,7 +227,7 @@ private:
       throw std::runtime_error("failed to acquire swap chain image");
     }
 
-    VT::UpdateUniformBuffer(this->_instance.get()->GetVkDevice(), uniformBuffersMemory, _swapchain->GetExtent(), currentFrame);
+    VT::UpdateUniformBuffer(this->_instance.get()->GetVkDevice(), _descriptor_sets->GetUniformBufferMemory(), _swapchain->GetExtent(), currentFrame);
 
     // delay resetting fence until after we know for sure we will be submitting work with it.
     // in the case of recreating swap chain:
@@ -384,7 +348,7 @@ private:
 
     // Descriptor sets can be used in graphics or compute pipelines so we need to specify
     // which one to use.
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &_descriptor_sets->GetDescriptorSets()[currentFrame], 0, nullptr);
 
     // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
     // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
@@ -420,8 +384,6 @@ private:
     create_graphics_pipeline();
     create_depth_resources();
     create_frame_buffers();
-    create_uniform_buffers();
-    create_descriptor_pool();
     create_descriptor_sets();
     _command_pool->ResetCommandBuffers();
   }

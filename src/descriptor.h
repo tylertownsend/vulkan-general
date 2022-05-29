@@ -6,7 +6,10 @@
 #include <array>
 #include <vector>
 
+#include "descriptor_set_layout.h"
+#include "texture_image.h"
 #include "uniform_buffer_object.h"
+#include "vulkan.h"
 
 namespace VT {
 
@@ -94,4 +97,83 @@ void CreateDescriptorSets(CreateDescriptorSetOptions& options, std::vector<VkDes
     vkUpdateDescriptorSets(options.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
   }
 }
+
+class DescriptorSets {
+  std::vector<VkBuffer> _uniform_buffers;
+  std::vector<VkDeviceMemory> _uniform_buffers_memory;
+
+  VkDescriptorPool _descriptor_pool;
+  std::vector<VkDescriptorSet> _descriptor_sets;
+
+  const std::shared_ptr<VT::Vulkan> _instance;
+  int _max_frames_in_flight;
+
+public:
+  DescriptorSets(
+      const std::shared_ptr<VT::Vulkan>& instance,
+      std::unique_ptr<VT::DescriptorSetLayout>& descriptor_set_layout,
+      std::unique_ptr<VT::TextureView>& texture_image,
+      int max_frames_in_flight): _instance(instance), _max_frames_in_flight(max_frames_in_flight) {
+    create_uniform_buffers();
+    create_descriptor_pool();
+    create_descriptor_sets(descriptor_set_layout, texture_image);
+  }
+
+  ~DescriptorSets() {
+    auto device = this->_instance->GetVkDevice();
+    for (size_t i = 0; i < _max_frames_in_flight; i++) {
+      vkDestroyBuffer(device, _uniform_buffers[i], nullptr);
+      vkFreeMemory(device, _uniform_buffers_memory[i], nullptr);
+    }
+
+    vkDestroyDescriptorPool(device, _descriptor_pool, nullptr);
+  }
+
+  std::vector<VkBuffer>& GetUniformBuffers() {
+    return _uniform_buffers;
+  }
+
+  std::vector<VkDeviceMemory>& GetUniformBufferMemory() {
+    return _uniform_buffers_memory;
+  }
+
+  VkDescriptorPool& GetDescriptorPool() {
+    return _descriptor_pool;
+  }
+
+  std::vector<VkDescriptorSet>& GetDescriptorSets() {
+    return _descriptor_sets;
+  }
+
+private:
+  void create_uniform_buffers() {
+    VT::CreateUniformBufferOptions options {_max_frames_in_flight, _instance->GetVkDevice(), _instance.get()->GetVkPhysicalDevice()};
+    VT::CreateUniformBuffers(options, _uniform_buffers, _uniform_buffers_memory);
+  }
+
+  void create_descriptor_pool() {
+    VT::CreateDescriptorPoolOptions options { this->_instance.get()->GetVkDevice(), _max_frames_in_flight };
+    VT::CreateDescriptorPools(options, _descriptor_pool);
+  }
+
+
+  // We create one descriptor set for each chain image
+  // with all the same layout.
+  // we do need copies of all the layouts because the next function
+  // expects an array matching the number of sets
+  void create_descriptor_sets(
+    std::unique_ptr<VT::DescriptorSetLayout>& _descriptor_set_layout,
+    std::unique_ptr<VT::TextureView>& texture_image) {
+    VT::CreateDescriptorSetOptions options {
+      _instance->GetVkDevice(),
+      _descriptor_set_layout->GetLayout(),
+      _descriptor_pool,
+      texture_image->GetImageView(),
+      texture_image->GetTextureSampler(),
+      _uniform_buffers,
+      _max_frames_in_flight
+    };
+    VT::CreateDescriptorSets(options, _descriptor_sets);
+  } 
+};
 } // VT
