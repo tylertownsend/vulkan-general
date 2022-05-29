@@ -71,7 +71,7 @@ private:
   VkExtent2D swapChainExtent;
 
   VkRenderPass renderPass;
-  VkDescriptorSetLayout descriptorSetLayout;
+  std::unique_ptr<VT::DescriptorSetLayout> _descriptor_set_layout;
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
 
@@ -156,9 +156,7 @@ private:
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
-
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
+    // desstroy descriptor set layout
     vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, indexBufferMemory, nullptr);
 
@@ -216,12 +214,11 @@ private:
   }
 
   void create_descriptor_set_layout() {
-    VT::DescriptorSetLayoutOptions options{ swapChainImageFormat, this->_instance.get()->GetVkDevice() };
-    descriptorSetLayout = VT::CreateDescriptorSetLayout(options);
+    _descriptor_set_layout = std::make_unique<VT::DescriptorSetLayout>(_instance, swapChainImageFormat);
   }
 
   void create_graphics_pipeline() {
-    VT::GraphicsPipelineOptions options {this->_instance.get()->GetVkDevice(), renderPass, descriptorSetLayout, swapChainExtent };
+    VT::GraphicsPipelineOptions options {this->_instance.get()->GetVkDevice(), renderPass, _descriptor_set_layout->GetLayout(), swapChainExtent };
     auto result = VT::CreateGraphicsPipeline(options);
     graphicsPipeline = result.graphics_pipeline;
     pipelineLayout = result.pipeline_layout;
@@ -275,7 +272,7 @@ private:
   void create_descriptor_sets() {
     VT::CreateDescriptorSetOptions options {
       this->_instance.get()->GetVkDevice(),
-      descriptorSetLayout,
+      _descriptor_set_layout->GetLayout(),
       descriptorPool,
       _texture_image->GetImageView(),
       _texture_image->GetTextureSampler(),
@@ -284,7 +281,6 @@ private:
     };
     VT::CreateDescriptorSets(options, descriptorSets);
   }
-
 
   void create_sync_objects() {
     VT::CreateSyncObjectsOptions options { this->_instance.get()->GetVkDevice(), MAX_FRAMES_IN_FLIGHT };

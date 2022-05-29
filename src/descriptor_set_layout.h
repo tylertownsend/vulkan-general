@@ -53,4 +53,28 @@ VkDescriptorSetLayout CreateDescriptorSetLayout(DescriptorSetLayoutOptions& opti
   }
   return descriptor_set_layout;
 }
+
+class DescriptorSetLayout {
+  VkDescriptorSetLayout _descriptor_set_layout;
+
+  const std::shared_ptr<Vulkan> _instance;
+public:
+  DescriptorSetLayout(const std::shared_ptr<Vulkan>& instance, VkFormat swap_chain_image_format): _instance(instance) {
+    create_descriptor_set_layout(instance, swap_chain_image_format);
+  }
+
+  ~DescriptorSetLayout() {
+    vkDestroyDescriptorSetLayout(_instance->GetVkDevice(), _descriptor_set_layout, nullptr);
+  }
+
+  VkDescriptorSetLayout& GetLayout() {
+    return _descriptor_set_layout;
+  }
+
+private:
+  void create_descriptor_set_layout(const std::shared_ptr<Vulkan>& instance, VkFormat swap_chain_image_format) {
+    VT::DescriptorSetLayoutOptions options{ swap_chain_image_format, _instance->GetVkDevice() };
+    _descriptor_set_layout = VT::CreateDescriptorSetLayout(options);
+  }
+};
 } // VT
