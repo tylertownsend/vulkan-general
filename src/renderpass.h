@@ -114,7 +114,7 @@ VkRenderPass CreateRenderPass(RenderPassOptions& options) {
   return render_pass;
 }
 
-VkFormat find_depth_format(VkPhysicalDevice physical_device) {
+VkFormat find_depth_format(const VkPhysicalDevice physical_device) {
   return find_supported_format(
     physical_device,
     {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
@@ -124,7 +124,7 @@ VkFormat find_depth_format(VkPhysicalDevice physical_device) {
 }
 
 VkFormat find_supported_format(
-    VkPhysicalDevice physical_device,
+    const VkPhysicalDevice physical_device,
     const std::vector<VkFormat>& candidates, 
     VkImageTiling tiling,
     VkFormatFeatureFlags features) {

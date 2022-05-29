@@ -44,6 +44,7 @@
 #include "synchronization.h"
 #include "indices.h"
 #include "command_pool.h"
+#include "depth_resources.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -62,6 +63,7 @@ public:
 private:
   std::shared_ptr<VT::Vulkan> _instance;
   std::unique_ptr<VT::CommandPool> _command_pool;
+  std::unique_ptr<VT::DepthResources> _depth_resources;
   std::unique_ptr<phx::Window> _window;
 
   VkSwapchainKHR swapChain;
@@ -81,10 +83,6 @@ private:
   VkDeviceMemory textureImageMemory;
   VkImageView textureImageView;
   VkSampler textureSampler;
-
-  VkImage depthImage;
-  VkDeviceMemory depthImageMemory;
-  VkImageView depthImageView;
 
   std::vector<VT::Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -183,7 +181,6 @@ private:
       vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
       vkDestroyFence(device, inFlightFences[i], nullptr);
     }
-
   }
 
   void create_instance() {
@@ -244,40 +241,12 @@ private:
   }
 
   void create_depth_resources() {
-
-    // TODO: find_depth_format should probably be initialied before this and renderpass
-    // are called.
-    VkFormat depthFormat = VT::find_depth_format(this->_instance.get()->GetVkPhysicalDevice());
-
-    VT::CreateImageOptions imageOptions(
-      swapChainExtent.width,
-      swapChainExtent.height,
-      depthFormat,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      this->_instance.get()->GetVkDevice(),
-      this->_instance.get()->GetVkPhysicalDevice()
-    );
-    VT::CreateImage(imageOptions, depthImage, depthImageMemory);
-
-    VT::ImageViewOptions options{};
-    options.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-    options.image = depthImage;
-    options.format = depthFormat;
-    options.device = this->_instance.get()->GetVkDevice();
-    depthImageView = VT::CreateImageView(options);
-    VT::TransitionImageLayout(this->_instance.get()->GetVkDevice(),
-                              _command_pool->GetCommandPool(),
-                              this->_instance->GetGraphicsQueue(),
-                              depthImage,
-                              depthFormat,
-                              VK_IMAGE_LAYOUT_UNDEFINED,
-                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    _depth_resources = std::make_unique<VT::DepthResources>(_instance, _command_pool, swapChainExtent);
   }
+
   void create_frame_buffers() {
-    VT::CreateFrameBuffersOptions options {this->_instance.get()->GetVkDevice(), renderPass, swapChainExtent, swapChainImageViews};
-    VT::CreateFrameBuffers(options, depthImageView, swapChainFramebuffers);
+    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), renderPass, swapChainExtent, swapChainImageViews};
+    VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
   }
 
   void create_texture_image() {
@@ -508,6 +477,7 @@ private:
   // previous swap chain to the oldSwapChain field in the VkSwapchainCreateInfoKHR struct
   // and destroy the old swap chain as soon as you've finished using it.
   void recreate_swap_chain() {
+    std::cout << "Recreating swapshain" << std::endl;
     this->_window->HandleMinimization();
 
     // don't touch resources still in use
@@ -533,14 +503,12 @@ private:
 
   void cleanup_swap_chain() {
     auto device = this->_instance.get()->GetVkDevice();
-    vkDestroyImageView(device, depthImageView, nullptr);
-    vkDestroyImage(device, depthImage, nullptr);
-    vkFreeMemory(device, depthImageMemory, nullptr);
+
+    delete _depth_resources.release();
 
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
       vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
     }
-
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
@@ -548,7 +516,6 @@ private:
     for (size_t i = 0; i < swapChainImageViews.size(); i++) {
       vkDestroyImageView(device, swapChainImageViews[i], nullptr);
     }
-
     vkDestroySwapchainKHR(device, swapChain, nullptr);
   }
 
