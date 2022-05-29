@@ -45,6 +45,7 @@
 #include "indices.h"
 #include "command_pool.h"
 #include "depth_resources.h"
+#include "swapchain_manager.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -64,17 +65,10 @@ private:
   std::unique_ptr<phx::Window> _window;
   std::shared_ptr<VT::Vulkan> _instance;
 
-  std::unique_ptr<VT::Swapchain> _swapchain;
-
-  std::unique_ptr<VT::DescriptorSetLayout> _descriptor_set_layout;
-  std::unique_ptr<VT::GraphicsPipeline> _graphics_pipeline;
-
   std::unique_ptr<VT::CommandPool> _command_pool;
-  std::unique_ptr<VT::DepthResources> _depth_resources;
-
-  std::vector<VkFramebuffer> swapChainFramebuffers;
-
   std::unique_ptr<VT::TextureView> _texture_image;
+
+  std::unique_ptr<VT::SwapchainManager> _swapchain_manager;
 
   std::vector<VT::Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -83,7 +77,6 @@ private:
   VkBuffer indexBuffer;
   VkDeviceMemory indexBufferMemory;
 
-  std::unique_ptr<VT::DescriptorSets> _descriptor_sets;
 
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -93,22 +86,12 @@ private:
 
   void init_vulkan() {
     create_instance();
-
-    create_swapchain();
-    create_descriptor_set_layout();
-    create_graphics_pipeline();
     create_command_pool();
-    create_depth_resources();
-    // moving frame buffers to make sure it is called after the depth image
-    // view has ben created
-    create_frame_buffers();
-
     create_texture_image();
-
+    create_swapchain_manager();
     load_model();
     create_vertex_buffer();
     create_index_buffer();
-    create_descriptor_sets();
 
     create_sync_objects();
   }
@@ -133,7 +116,10 @@ private:
     auto instance = this->_instance->GetVkInstance();
     auto device = this->_instance->GetVkDevice();
 
-    this->cleanup_swap_chain();
+    // check to see if unique_ptr_handles this
+    // otherwise
+    // delete swapchain_manager.release();
+    // this->cleanup_swap_chain();
 
     // desstroy descriptor set layout
     vkDestroyBuffer(device, indexBuffer, nullptr);
@@ -159,33 +145,16 @@ private:
     _instance = VT::CreateInstance(options);
   }
 
-  void create_swapchain() {
-    _swapchain = std::make_unique<VT::Swapchain>(_instance, _window);
-  }
-
-  void create_descriptor_set_layout() {
-    _descriptor_set_layout = std::make_unique<VT::DescriptorSetLayout>(_instance, _swapchain->GetImageFormat());
-  }
-
-  void create_graphics_pipeline() {
-    _graphics_pipeline = std::make_unique<VT::GraphicsPipeline>(_instance, _swapchain, _descriptor_set_layout);
-  }
-
   void create_command_pool() {
     _command_pool = std::make_unique<VT::CommandPool>(_instance, MAX_FRAMES_IN_FLIGHT);
-  }
-
-  void create_depth_resources() {
-    _depth_resources = std::make_unique<VT::DepthResources>(_instance, _command_pool, _swapchain->GetExtent());
   }
 
   void create_texture_image() {
     _texture_image = std::make_unique<VT::TextureView>(_instance, _command_pool);
   }
 
-  void create_frame_buffers() {
-    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), _graphics_pipeline->GetRenderPass(), _swapchain->GetExtent(), _swapchain->GetSwapChainImageViews() };
-    VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
+  void create_swapchain_manager() {
+    _swapchain_manager = std::make_unique<VT::SwapchainManager>(_instance, _command_pool, _texture_image, _window, MAX_FRAMES_IN_FLIGHT);
   }
 
   void load_model() {
@@ -202,10 +171,6 @@ private:
     VT::CreateIndexBuffer(options, indices, indexBuffer, indexBufferMemory);
   }
 
-  void create_descriptor_sets() {
-    _descriptor_sets = std::make_unique<VT::DescriptorSets>(_instance, _descriptor_set_layout, _texture_image, MAX_FRAMES_IN_FLIGHT);
-  }
-
   void create_sync_objects() {
     VT::CreateSyncObjectsOptions options { this->_instance.get()->GetVkDevice(), MAX_FRAMES_IN_FLIGHT };
     VT::CreateSyncObjects(options, imageAvailableSemaphores, renderFinishedSemaphores, inFlightFences);
@@ -213,13 +178,14 @@ private:
 
   void draw_frame() {
     uint32_t imageIndex;
-    vkWaitForFences(this->_instance.get()->GetVkDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-    VkResult result = vkAcquireNextImageKHR(this->_instance.get()->GetVkDevice(), _swapchain->GetSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    vkWaitForFences(_instance->GetVkDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    VkResult result = _swapchain_manager->AcquireNextImage(imageAvailableSemaphores, currentFrame, imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
       // swap chain has become incompatiable with surface and can no longer be used for rendering
       // (e.g window resize)
-      recreate_swap_chain();
+      _swapchain_manager->RecreateSwapchain(_window, _command_pool, _texture_image);
       return;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
       // swap chain can be used to successufly present to surface but surface properties no
@@ -227,14 +193,14 @@ private:
       throw std::runtime_error("failed to acquire swap chain image");
     }
 
-    VT::UpdateUniformBuffer(this->_instance.get()->GetVkDevice(), _descriptor_sets->GetUniformBufferMemory(), _swapchain->GetExtent(), currentFrame);
+    _swapchain_manager->UpdateUnfiformBuffer(currentFrame);
 
     // delay resetting fence until after we know for sure we will be submitting work with it.
     // in the case of recreating swap chain:
     //   the current frame's fence was waited upon and reset. Since we returned immediately,
     //   no work is submitted for execution and the fence will never be signalled causing to 
     //   wait forever.
-    vkResetFences(this->_instance.get()->GetVkDevice(), 1, &inFlightFences[currentFrame]);
+    vkResetFences(_instance->GetVkDevice(), 1, &inFlightFences[currentFrame]);
 
     // call on command buffer to make sure it is able to be recorded.
     auto command_buffer = _command_pool->GetCommandBuffer(currentFrame);
@@ -260,36 +226,19 @@ private:
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(this->_instance->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+    if (vkQueueSubmit(_instance->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
       throw std::runtime_error("failed to submit draw command buffer!");
     }
     // submitting the result back to the swap chain to have it eventually show up on the screen
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
-
-    VkSwapchainKHR swapChains[] = {_swapchain->GetSwapchain()};
-    presentInfo.swapchainCount = 1;
-    // The next two parameters specify the swap chains to present
-    // images to and the index of the image for each swap chain. This will almost always
-    // be a single one.
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &imageIndex;
-    // There is one last optional parameter called pResults. It allows you to specify an array
-    // of VkResult values to check for every individual swap chain if presentation was successfu
-    presentInfo.pResults = nullptr;
-
-    VkResult queueResult = vkQueuePresentKHR(this->_instance->GetPresentQueue(), &presentInfo);
+    VkResult queueResult = _swapchain_manager->QueuePresentKHR(signalSemaphores, imageIndex);
 
     if (queueResult == VK_ERROR_OUT_OF_DATE_KHR ||
         queueResult == VK_SUBOPTIMAL_KHR ||
-        this->_window->FrameBufferResized()) {
+        _window->FrameBufferResized()) {
       // make sure to do this after queuepresentKHR to make sure semaphores are in consistent
       // state, otherwise a signalled semaphore may never be properly waited upon.
-      this->_window->ResetFrameBuffer();
-      recreate_swap_chain();
+      _window->ResetFrameBuffer();
+      _swapchain_manager->RecreateSwapchain(_window, _command_pool, _texture_image);
     } else if (queueResult != VK_SUCCESS) {
       throw std::runtime_error("failed to present swap chain image!");
     }
@@ -311,94 +260,17 @@ private:
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
+    // TODO Consider Render Pass to be a part of the swapchain manager
     // The first parameters are the render pass itself and the attachments to bind. We created a framebuffer for
     // each swap chain image where it is specified as a color attachment.
     // Thus we need to bind the framebuffer for the swapchain image we want to draw to. 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = _graphics_pipeline->GetRenderPass();
-    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    // The render area defines where shader loads and stores will take place.
-    // The pixels outside this region will have undefined values.
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = _swapchain->GetExtent();
-
-    // The last two parameters define the clear values to use for;
-    // VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color= {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
-
-    // The first parameter for every command is always the command buffer to record the
-    // command to. The second parameter specifies the details of the render pass we've
-    // just provided. The final parameter controls how the drawing commands within the render
-    // pass will be provided. 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipeline());
-
-    // bind vertex buffer during rendering operations
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-    // Descriptor sets can be used in graphics or compute pipelines so we need to specify
-    // which one to use.
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &_descriptor_sets->GetDescriptorSets()[currentFrame], 0, nullptr);
-
-    // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
-    // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
-    // firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
-    // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-    vkCmdEndRenderPass(commandBuffer);
+    _swapchain_manager->CompleteRenderPass(commandBuffer, imageIndex, currentFrame, vertexBuffer, indexBuffer, indices);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
       throw std::runtime_error("failed to record command buffer!");
     }
   }
 
-  // However, the disadvantage of this approach is that we need to stop all rendering before
-  // creating the new swap chain. It is possible to create a new swap chain while drawing
-  // commands on an image from the old swap chain are still in-flight. You need to pass the
-  // previous swap chain to the oldSwapChain field in the VkSwapchainCreateInfoKHR struct
-  // and destroy the old swap chain as soon as you've finished using it.
-  void recreate_swap_chain() {
-    std::cout << "Recreating swapshain" << std::endl;
-    this->_window->HandleMinimization();
-
-    // don't touch resources still in use
-    vkDeviceWaitIdle(this->_instance.get()->GetVkDevice());
-
-    cleanup_swap_chain();
-
-    // Note that in chooseSwapExtent we already query the new window resolution to make sure
-    // that the swap chain images have the (new) right size, so there's no need to modify
-    // chooseSwapExtent (remember that we already had to use glfwGetFramebufferSize get the
-    // resolution of the surface in pixels when creating the swap chain).
-    create_swapchain();
-    create_graphics_pipeline();
-    create_depth_resources();
-    create_frame_buffers();
-    create_descriptor_sets();
-    _command_pool->ResetCommandBuffers();
-  }
-
-  void cleanup_swap_chain() {
-    auto device = this->_instance.get()->GetVkDevice();
-
-    delete _depth_resources.release();
-
-    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
-      vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
-    }
-
-    delete _swapchain.release();
-  }
 
   bool has_stensil_component(VkFormat format) {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;

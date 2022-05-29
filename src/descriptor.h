@@ -111,8 +111,8 @@ class DescriptorSets {
 public:
   DescriptorSets(
       const std::shared_ptr<VT::Vulkan>& instance,
-      std::unique_ptr<VT::DescriptorSetLayout>& descriptor_set_layout,
-      std::unique_ptr<VT::TextureView>& texture_image,
+      const std::unique_ptr<VT::DescriptorSetLayout>& descriptor_set_layout,
+      const std::unique_ptr<VT::TextureView>& texture_image,
       int max_frames_in_flight): _instance(instance), _max_frames_in_flight(max_frames_in_flight) {
     create_uniform_buffers();
     create_descriptor_pool();
@@ -162,8 +162,8 @@ private:
   // we do need copies of all the layouts because the next function
   // expects an array matching the number of sets
   void create_descriptor_sets(
-    std::unique_ptr<VT::DescriptorSetLayout>& _descriptor_set_layout,
-    std::unique_ptr<VT::TextureView>& texture_image) {
+    const std::unique_ptr<VT::DescriptorSetLayout>& _descriptor_set_layout,
+    const std::unique_ptr<VT::TextureView>& texture_image) {
     VT::CreateDescriptorSetOptions options {
       _instance->GetVkDevice(),
       _descriptor_set_layout->GetLayout(),
