@@ -61,10 +61,8 @@ public:
   }
 
 private:
-  std::shared_ptr<VT::Vulkan> _instance;
-  std::unique_ptr<VT::CommandPool> _command_pool;
-  std::unique_ptr<VT::DepthResources> _depth_resources;
   std::unique_ptr<phx::Window> _window;
+  std::shared_ptr<VT::Vulkan> _instance;
 
   VkSwapchainKHR swapChain;
   std::vector<VkImage> swapChainImages;
@@ -77,12 +75,12 @@ private:
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
 
+  std::unique_ptr<VT::CommandPool> _command_pool;
+  std::unique_ptr<VT::DepthResources> _depth_resources;
+
   std::vector<VkFramebuffer> swapChainFramebuffers;
 
-  VkImage textureImage;
-  VkDeviceMemory textureImageMemory;
-  VkImageView textureImageView;
-  VkSampler textureSampler;
+  std::unique_ptr<VT::TextureView> _texture_image;
 
   std::vector<VT::Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -118,8 +116,6 @@ private:
     create_frame_buffers();
 
     create_texture_image();
-    create_texture_image_view();
-    create_texture_sampler();
 
     load_model();
     create_vertex_buffer();
@@ -160,11 +156,6 @@ private:
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
-    vkDestroySampler(device, textureSampler, nullptr);
-    vkDestroyImageView(device, textureImageView, nullptr);
-
-    vkDestroyImage(device, textureImage, nullptr);
-    vkFreeMemory(device, textureImageMemory, nullptr);
 
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
@@ -249,30 +240,6 @@ private:
     VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
   }
 
-  void create_texture_image() {
-    VT::CreateTextureImageOptions options{
-      this->_instance.get()->GetVkDevice(),
-      this->_instance.get()->GetVkPhysicalDevice(),
-      _command_pool->GetCommandPool(),
-      this->_instance->GetGraphicsQueue()
-    };
-    VT::CreateTextureImage(options, textureImage, textureImageMemory);
-  }
-
-  void create_texture_image_view() {
-    VT::ImageViewOptions options{};
-    options.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-    options.format = VK_FORMAT_R8G8B8A8_SRGB;
-    options.device = this->_instance.get()->GetVkDevice();
-    options.image = textureImage;
-    textureImageView = VT::CreateImageView(options);
-  }
-
-  void create_texture_sampler() {
-    VT::CreateTextureSamplerOptions options { this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice() };
-    textureSampler = VT::CreateTextureImageSampler(options);
-  }
-
   void load_model() {
     VT::LoadModel(vertices, indices, VT::MODEL_PATH.c_str());
   }
@@ -297,6 +264,10 @@ private:
     VT::CreateDescriptorPools(options, descriptorPool);
   }
 
+  void create_texture_image() {
+    _texture_image = std::make_unique<VT::TextureView>(_instance, _command_pool);
+  }
+
   // We create one descriptor set for each swap chain image
   // with all the same layout.
   // we do need copies of all the layouts because the next function
@@ -306,8 +277,8 @@ private:
       this->_instance.get()->GetVkDevice(),
       descriptorSetLayout,
       descriptorPool,
-      textureImageView,
-      textureSampler,
+      _texture_image->GetImageView(),
+      _texture_image->GetTextureSampler(),
       uniformBuffers,
       MAX_FRAMES_IN_FLIGHT
     };

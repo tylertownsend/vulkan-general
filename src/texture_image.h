@@ -6,6 +6,7 @@
 #include <stb/stb_image.h>
 
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -17,6 +18,8 @@
 #define GetCurrentDir getcwd
 #endif
 
+#include "vulkan.h"
+#include "command_pool.h"
 #include "buffer.h"
 #include "image.h"
 #include "constants.h"
@@ -139,4 +142,65 @@ VkSampler CreateTextureImageSampler(CreateTextureSamplerOptions& options) {
   }
   return texture_sampler;
 }
+
+class TextureView {
+  VkImage textureImage;
+  VkDeviceMemory textureImageMemory;
+  VkImageView textureImageView;
+  VkSampler textureSampler;
+
+  const std::shared_ptr<Vulkan> _instance;
+public:
+  TextureView(
+      const std::shared_ptr<Vulkan>& instance, 
+      const std::unique_ptr<CommandPool>&  command_pool): _instance(instance) {
+    create_texture_image(command_pool);
+    create_texture_image_view();
+    create_texture_sampler();
+  }
+
+  ~TextureView() {
+    auto device = _instance->GetVkDevice();
+
+    vkDestroySampler(device, textureSampler, nullptr);
+    vkDestroyImageView(device, textureImageView, nullptr);
+
+    vkDestroyImage(device, textureImage, nullptr);
+    vkFreeMemory(device, textureImageMemory, nullptr);
+  }
+
+  VkImageView& GetImageView() {
+    return textureImageView;
+  }
+
+  VkSampler& GetTextureSampler() {
+    return textureSampler;
+  }
+
+private:
+  void create_texture_image(const std::unique_ptr<CommandPool>& command_pool) {
+    VT::CreateTextureImageOptions options{
+      _instance->GetVkDevice(),
+      _instance->GetVkPhysicalDevice(),
+      command_pool->GetCommandPool(),
+      _instance->GetGraphicsQueue()
+    };
+    VT::CreateTextureImage(options, textureImage, textureImageMemory);
+  }
+
+  void create_texture_image_view() {
+    VT::ImageViewOptions options{};
+    options.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    options.format = VK_FORMAT_R8G8B8A8_SRGB;
+    options.device = _instance->GetVkDevice();
+    options.image = textureImage;
+    textureImageView = VT::CreateImageView(options);
+  }
+
+  void create_texture_sampler() {
+    VT::CreateTextureSamplerOptions options { _instance->GetVkDevice(), _instance->GetVkPhysicalDevice() };
+    textureSampler = VT::CreateTextureImageSampler(options);
+  }
+
+};
 } // VT
