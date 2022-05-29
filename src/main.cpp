@@ -64,11 +64,7 @@ private:
   std::unique_ptr<phx::Window> _window;
   std::shared_ptr<VT::Vulkan> _instance;
 
-  VkSwapchainKHR swapChain;
-  std::vector<VkImage> swapChainImages;
-  std::vector<VkImageView> swapChainImageViews;
-  VkFormat swapChainImageFormat;
-  VkExtent2D swapChainExtent;
+  std::unique_ptr<VT::Swapchain> _swapchain;
 
   VkRenderPass renderPass;
   std::unique_ptr<VT::DescriptorSetLayout> _descriptor_set_layout;
@@ -105,7 +101,6 @@ private:
     create_instance();
 
     create_swapchain();
-    create_image_views();
     create_render_pass();
     create_descriptor_set_layout();
     create_graphics_pipeline();
@@ -179,46 +174,21 @@ private:
     VT::VulkanOptions options(window, application_name, engine_name);
     _instance = VT::CreateInstance(options);
   }
-
-  void create_image_views() {
-    swapChainImageViews.resize(swapChainImages.size());
-
-    for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-      VT::ImageViewOptions options{};
-      options.device = this->_instance->GetVkDevice();
-      options.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-      options.format = swapChainImageFormat;
-      options.image = swapChainImages[i];
-      swapChainImageViews[i] = VT::CreateImageView(options);
-    }
-  }
   void create_swapchain() {
-    VT::Vulkan* instance = this->_instance.get();
-    VT::SwapChainOptions options{
-      instance->GetVkInstance(),
-      instance->GetVkSurfaceKHR(),
-      instance->GetVkPhysicalDevice(),
-      instance->GetVkDevice(),
-      _window->GetGLFWwindow()
-    };
-    auto swapchainInfo = VT::CreateSwapchain(options);
-    swapChain = swapchainInfo.swapchain;
-    swapChainImages = swapchainInfo.swapchain_images;
-    swapChainImageFormat = swapchainInfo.swapchain_image_format;
-    swapChainExtent = swapchainInfo.swapchain_extent;
+    _swapchain = std::make_unique<VT::Swapchain>(_instance, _window);
   }
 
   void create_render_pass() {
-    VT::RenderPassOptions options{swapChainImageFormat, this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice()};
+    VT::RenderPassOptions options{_swapchain->GetImageFormat(), this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice()};
     renderPass = VT::CreateRenderPass(options);
   }
 
   void create_descriptor_set_layout() {
-    _descriptor_set_layout = std::make_unique<VT::DescriptorSetLayout>(_instance, swapChainImageFormat);
+    _descriptor_set_layout = std::make_unique<VT::DescriptorSetLayout>(_instance, _swapchain->GetImageFormat());
   }
 
   void create_graphics_pipeline() {
-    VT::GraphicsPipelineOptions options {this->_instance.get()->GetVkDevice(), renderPass, _descriptor_set_layout->GetLayout(), swapChainExtent };
+    VT::GraphicsPipelineOptions options {this->_instance.get()->GetVkDevice(), renderPass, _descriptor_set_layout->GetLayout(), _swapchain->GetExtent() };
     auto result = VT::CreateGraphicsPipeline(options);
     graphicsPipeline = result.graphics_pipeline;
     pipelineLayout = result.pipeline_layout;
@@ -229,11 +199,11 @@ private:
   }
 
   void create_depth_resources() {
-    _depth_resources = std::make_unique<VT::DepthResources>(_instance, _command_pool, swapChainExtent);
+    _depth_resources = std::make_unique<VT::DepthResources>(_instance, _command_pool, _swapchain->GetExtent());
   }
 
   void create_frame_buffers() {
-    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), renderPass, swapChainExtent, swapChainImageViews};
+    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), renderPass, _swapchain->GetExtent(), _swapchain->GetSwapChainImageViews() };
     VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
   }
 
@@ -265,7 +235,7 @@ private:
     _texture_image = std::make_unique<VT::TextureView>(_instance, _command_pool);
   }
 
-  // We create one descriptor set for each swap chain image
+  // We create one descriptor set for each chain image
   // with all the same layout.
   // we do need copies of all the layouts because the next function
   // expects an array matching the number of sets
@@ -290,7 +260,7 @@ private:
   void draw_frame() {
     uint32_t imageIndex;
     vkWaitForFences(this->_instance.get()->GetVkDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-    VkResult result = vkAcquireNextImageKHR(this->_instance.get()->GetVkDevice(), swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(this->_instance.get()->GetVkDevice(), _swapchain->GetSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
       // swap chain has become incompatiable with surface and can no longer be used for rendering
@@ -303,7 +273,7 @@ private:
       throw std::runtime_error("failed to acquire swap chain image");
     }
 
-    VT::UpdateUniformBuffer(this->_instance.get()->GetVkDevice(), uniformBuffersMemory, swapChainExtent, currentFrame);
+    VT::UpdateUniformBuffer(this->_instance.get()->GetVkDevice(), uniformBuffersMemory, _swapchain->GetExtent(), currentFrame);
 
     // delay resetting fence until after we know for sure we will be submitting work with it.
     // in the case of recreating swap chain:
@@ -346,7 +316,7 @@ private:
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = signalSemaphores;
 
-    VkSwapchainKHR swapChains[] = {swapChain};
+    VkSwapchainKHR swapChains[] = {_swapchain->GetSwapchain()};
     presentInfo.swapchainCount = 1;
     // The next two parameters specify the swap chains to present
     // images to and the index of the image for each swap chain. This will almost always
@@ -397,7 +367,7 @@ private:
     // The render area defines where shader loads and stores will take place.
     // The pixels outside this region will have undefined values.
     renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = swapChainExtent;
+    renderPassInfo.renderArea.extent = _swapchain->GetExtent();
 
     // The last two parameters define the clear values to use for;
     // VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment
@@ -457,7 +427,6 @@ private:
     // chooseSwapExtent (remember that we already had to use glfwGetFramebufferSize get the
     // resolution of the surface in pixels when creating the swap chain).
     create_swapchain();
-    create_image_views();
     create_render_pass();
     create_graphics_pipeline();
     create_depth_resources();
@@ -480,13 +449,10 @@ private:
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
 
-    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-      vkDestroyImageView(device, swapChainImageViews[i], nullptr);
-    }
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
+    delete _swapchain.release();
   }
 
-    bool has_stensil_component(VkFormat format) {
+  bool has_stensil_component(VkFormat format) {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
   }
 };

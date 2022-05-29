@@ -8,7 +8,7 @@
 #include <set>
 
 #include "queue_families.h"
-#include "swapchain.h"
+#include "swapchain_utils.h"
 
 // const std::vector<const char*> deviceExtensions = {
 //   VK_KHR_SWAPCHAIN_EXTENSION_NAME
