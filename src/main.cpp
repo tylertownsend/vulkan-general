@@ -43,6 +43,7 @@
 #include "window.h"
 #include "synchronization.h"
 #include "indices.h"
+#include "command_pool.h"
 
 // number of frames to be processed concurrently.
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -59,7 +60,8 @@ public:
   }
 
 private:
-  std::unique_ptr<VT::Vulkan> _instance;
+  std::shared_ptr<VT::Vulkan> _instance;
+  std::unique_ptr<VT::CommandPool> _command_pool;
   std::unique_ptr<phx::Window> _window;
 
   VkSwapchainKHR swapChain;
@@ -97,9 +99,6 @@ private:
   VkDescriptorPool descriptorPool;
   std::vector<VkDescriptorSet> descriptorSets;
 
-  VkCommandPool commandPool;
-  std::vector<VkCommandBuffer> commandBuffers;
-
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
   std::vector<VkFence> inFlightFences;
@@ -130,7 +129,6 @@ private:
     create_uniform_buffers();
     create_descriptor_pool();
     create_descriptor_sets();
-    create_command_buffers();
 
     create_sync_objects();
   }
@@ -186,7 +184,6 @@ private:
       vkDestroyFence(device, inFlightFences[i], nullptr);
     }
 
-    vkDestroyCommandPool(device, commandPool, nullptr);
   }
 
   void create_instance() {
@@ -242,6 +239,10 @@ private:
     pipelineLayout = result.pipeline_layout;
   }
 
+  void create_command_pool() {
+    _command_pool = std::make_unique<VT::CommandPool>(_instance, MAX_FRAMES_IN_FLIGHT);
+  }
+
   void create_depth_resources() {
 
     // TODO: find_depth_format should probably be initialied before this and renderpass
@@ -267,31 +268,13 @@ private:
     options.device = this->_instance.get()->GetVkDevice();
     depthImageView = VT::CreateImageView(options);
     VT::TransitionImageLayout(this->_instance.get()->GetVkDevice(),
-                              commandPool,
+                              _command_pool->GetCommandPool(),
                               this->_instance->GetGraphicsQueue(),
                               depthImage,
                               depthFormat,
                               VK_IMAGE_LAYOUT_UNDEFINED,
                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   }
-
-  void create_command_pool() {
-    VT::QueueFamilyIndices queueFamilyIndices = this->_instance->GetQueueFamilyIndices();
-
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    // We will be recording a command buffer every frame, so we want to be able to
-    // reset and rerecord over it. Thus, we need to set the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag bit for our command pool.
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    
-    // Command buffers are executed by submitting them on one of the device queues,
-    // like the graphics and presentation queues we retrieved
-    if (vkCreateCommandPool(this->_instance.get()->GetVkDevice(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create command pool!");
-    }
-  }
-
   void create_frame_buffers() {
     VT::CreateFrameBuffersOptions options {this->_instance.get()->GetVkDevice(), renderPass, swapChainExtent, swapChainImageViews};
     VT::CreateFrameBuffers(options, depthImageView, swapChainFramebuffers);
@@ -301,7 +284,7 @@ private:
     VT::CreateTextureImageOptions options{
       this->_instance.get()->GetVkDevice(),
       this->_instance.get()->GetVkPhysicalDevice(),
-      commandPool,
+      _command_pool->GetCommandPool(),
       this->_instance->GetGraphicsQueue()
     };
     VT::CreateTextureImage(options, textureImage, textureImageMemory);
@@ -326,12 +309,12 @@ private:
   }
 
   void create_vertex_buffer() {
-    VT::CreateVertexBufferOptions options{this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice(), commandPool, this->_instance->GetGraphicsQueue(), vertices};
+    VT::CreateVertexBufferOptions options{this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice(), _command_pool->GetCommandPool(), this->_instance->GetGraphicsQueue(), vertices};
     VT::CreateVertexBuffer(options, vertexBuffer, vertexBufferMemory);
   }
 
   void create_index_buffer() {
-    VT::CreateIndexBufferOptions options{this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice(), commandPool, this->_instance->GetGraphicsQueue() };
+    VT::CreateIndexBufferOptions options{this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice(),  _command_pool->GetCommandPool(), this->_instance->GetGraphicsQueue() };
     VT::CreateIndexBuffer(options, indices, indexBuffer, indexBufferMemory);
   }
 
@@ -362,10 +345,6 @@ private:
     VT::CreateDescriptorSets(options, descriptorSets);
   }
 
-  void create_command_buffers() {
-    VT::CreateCommandBuffersOptions options { this->_instance.get()->GetVkDevice(), commandPool, MAX_FRAMES_IN_FLIGHT};
-    VT::CreateCommandBuffers(options, commandBuffers);
-  }
 
   void create_sync_objects() {
     VT::CreateSyncObjectsOptions options { this->_instance.get()->GetVkDevice(), MAX_FRAMES_IN_FLIGHT };
@@ -398,9 +377,10 @@ private:
     vkResetFences(this->_instance.get()->GetVkDevice(), 1, &inFlightFences[currentFrame]);
 
     // call on command buffer to make sure it is able to be recorded.
-    vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+    auto command_buffer = _command_pool->GetCommandBuffer(currentFrame);
+    vkResetCommandBuffer(command_buffer, 0);
     // call to record the commands we want.
-    record_command_buffer(commandBuffers[currentFrame], imageIndex);
+    record_command_buffer(command_buffer, imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -412,7 +392,7 @@ private:
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+    submitInfo.pCommandBuffers = &command_buffer;
 
     // The signalSemaphoreCount and pSignalSemaphores specifcy which semaphores to signal
     // once the command buffer finishes execution.
@@ -548,7 +528,7 @@ private:
     create_uniform_buffers();
     create_descriptor_pool();
     create_descriptor_sets();
-    create_command_buffers();
+    _command_pool->ResetCommandBuffers();
   }
 
   void cleanup_swap_chain() {

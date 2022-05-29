@@ -6,7 +6,7 @@
 #include "image.h"
 
 namespace VT {
-class DepthResources {
+class DepthResources { 
  public:
   DepthResources() {
 
