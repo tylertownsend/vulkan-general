@@ -1,0 +1,20 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "2.0.0",
+  "configurations": [
+    {
+        "name": "Debug Main Program",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceRoot}/build/main",
+        // "target": "./Debug/bin/CHIP8",
+        // needed since the execution of main runs from this
+        // location
+        "cwd": "${workspaceRoot}",
+        // run the make task
+        "preLaunchTask": "make"
+    }
+  ]
+}

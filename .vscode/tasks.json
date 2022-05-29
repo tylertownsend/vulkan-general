@@ -1,0 +1,54 @@
+{
+  "tasks": [
+    {
+      "label": "make dir",
+      "type": "shell",
+      "command": "mkdir",
+      "options": {
+        "cwd": "${cwd}"
+      },
+      "args": [
+        "-p",
+        "build"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Create Build Dir"
+    },
+    {
+      "label": "cmake",
+      "type": "shell",
+      "command": "cmake",
+      "options": {
+        "cwd": "${cwd}/build"
+      },
+      "args": [
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "'..'"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Task for running cmake file",
+      "dependsOn": "make dir"
+    },
+    {
+      "label": "make",
+      "type": "shell",
+      "command": "make",
+      "options": {
+        "cwd": "${cwd}/build"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Task for running make file",
+      "dependsOn": "cmake"
+    }
+  ],
+  "version": "2.0.0"
+}
