@@ -66,10 +66,8 @@ private:
 
   std::unique_ptr<VT::Swapchain> _swapchain;
 
-  VkRenderPass renderPass;
   std::unique_ptr<VT::DescriptorSetLayout> _descriptor_set_layout;
-  VkPipelineLayout pipelineLayout;
-  VkPipeline graphicsPipeline;
+  std::unique_ptr<VT::GraphicsPipeline> _graphics_pipeline;
 
   std::unique_ptr<VT::CommandPool> _command_pool;
   std::unique_ptr<VT::DepthResources> _depth_resources;
@@ -101,7 +99,6 @@ private:
     create_instance();
 
     create_swapchain();
-    create_render_pass();
     create_descriptor_set_layout();
     create_graphics_pipeline();
     create_command_pool();
@@ -174,13 +171,9 @@ private:
     VT::VulkanOptions options(window, application_name, engine_name);
     _instance = VT::CreateInstance(options);
   }
+
   void create_swapchain() {
     _swapchain = std::make_unique<VT::Swapchain>(_instance, _window);
-  }
-
-  void create_render_pass() {
-    VT::RenderPassOptions options{_swapchain->GetImageFormat(), this->_instance.get()->GetVkDevice(), this->_instance.get()->GetVkPhysicalDevice()};
-    renderPass = VT::CreateRenderPass(options);
   }
 
   void create_descriptor_set_layout() {
@@ -188,10 +181,7 @@ private:
   }
 
   void create_graphics_pipeline() {
-    VT::GraphicsPipelineOptions options {this->_instance.get()->GetVkDevice(), renderPass, _descriptor_set_layout->GetLayout(), _swapchain->GetExtent() };
-    auto result = VT::CreateGraphicsPipeline(options);
-    graphicsPipeline = result.graphics_pipeline;
-    pipelineLayout = result.pipeline_layout;
+    _graphics_pipeline = std::make_unique<VT::GraphicsPipeline>(_instance, _swapchain, _descriptor_set_layout);
   }
 
   void create_command_pool() {
@@ -203,7 +193,7 @@ private:
   }
 
   void create_frame_buffers() {
-    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), renderPass, _swapchain->GetExtent(), _swapchain->GetSwapChainImageViews() };
+    VT::CreateFrameBuffersOptions options {_instance->GetVkDevice(), _graphics_pipeline->GetRenderPass(), _swapchain->GetExtent(), _swapchain->GetSwapChainImageViews() };
     VT::CreateFrameBuffers(options, _depth_resources->GetDepthImageView(), swapChainFramebuffers);
   }
 
@@ -362,7 +352,7 @@ private:
     // Thus we need to bind the framebuffer for the swapchain image we want to draw to. 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.renderPass = _graphics_pipeline->GetRenderPass();
     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
     // The render area defines where shader loads and stores will take place.
     // The pixels outside this region will have undefined values.
@@ -383,7 +373,7 @@ private:
     // just provided. The final parameter controls how the drawing commands within the render
     // pass will be provided. 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipeline());
 
     // bind vertex buffer during rendering operations
     VkBuffer vertexBuffers[] = {vertexBuffer};
@@ -394,7 +384,7 @@ private:
 
     // Descriptor sets can be used in graphics or compute pipelines so we need to specify
     // which one to use.
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
     // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
@@ -427,7 +417,6 @@ private:
     // chooseSwapExtent (remember that we already had to use glfwGetFramebufferSize get the
     // resolution of the surface in pixels when creating the swap chain).
     create_swapchain();
-    create_render_pass();
     create_graphics_pipeline();
     create_depth_resources();
     create_frame_buffers();
@@ -445,9 +434,6 @@ private:
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
       vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
     }
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyRenderPass(device, renderPass, nullptr);
 
     delete _swapchain.release();
   }

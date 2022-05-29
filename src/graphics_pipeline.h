@@ -17,7 +17,10 @@
 #define GetCurrentDir getcwd
 #endif
 
+#include "descriptor_set_layout.h"
+#include "swapchain.h"
 #include "vertex.h"
+#include "vulkan.h"
 
 namespace VT {
 
@@ -264,4 +267,65 @@ std::vector<char> read_file(const std::string& filename) {
 
   return buffer;
 }
+
+class GraphicsPipeline {
+  VkRenderPass _render_pass;
+  VkPipelineLayout _graphics_pipeline_layout;
+  VkPipeline _graphics_pipeline;
+
+  const std::shared_ptr<VT::Vulkan> _instance;
+
+public:
+  GraphicsPipeline(
+      const std::shared_ptr<VT::Vulkan>& instance,
+      const std::unique_ptr<VT::Swapchain>& swapchain,
+      const std::unique_ptr<VT::DescriptorSetLayout>& descriptor_set_layout):_instance(instance) {
+    create_render_pass(swapchain);
+    create_graphics_pipeline(swapchain, descriptor_set_layout);
+  }
+
+  ~GraphicsPipeline() {
+    auto device = _instance->GetVkDevice();
+    vkDestroyPipeline(device, _graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(device, _graphics_pipeline_layout, nullptr);
+    vkDestroyRenderPass(device, _render_pass, nullptr);
+  }
+
+  VkRenderPass& GetRenderPass() {
+    return _render_pass;
+  }
+
+  VkPipelineLayout& GetPipelineLayout() {
+    return _graphics_pipeline_layout;
+  }
+
+  VkPipeline& GetPipeline() {
+    return _graphics_pipeline;
+  }
+
+private:
+  void create_render_pass(
+      const std::unique_ptr<VT::Swapchain>& swapchain) {
+    VT::RenderPassOptions options{
+      swapchain->GetImageFormat(),
+      _instance->GetVkDevice(),
+      _instance->GetVkPhysicalDevice()
+    };
+    _render_pass = VT::CreateRenderPass(options);
+  }
+
+  void create_graphics_pipeline(
+      const std::unique_ptr<VT::Swapchain>& swapchain,
+      const std::unique_ptr<VT::DescriptorSetLayout>& descriptor_set_layout) {
+    VT::GraphicsPipelineOptions options {
+      _instance->GetVkDevice(),
+      _render_pass,
+      descriptor_set_layout->GetLayout(),
+      swapchain->GetExtent()
+    };
+    auto result = VT::CreateGraphicsPipeline(options);
+    _graphics_pipeline = result.graphics_pipeline;
+    _graphics_pipeline_layout = result.pipeline_layout;
+  }
+};
 } // VT
