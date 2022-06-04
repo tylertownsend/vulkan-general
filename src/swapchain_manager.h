@@ -120,7 +120,7 @@ public:
     // just provided. The final parameter controls how the drawing commands within the render
     // pass will be provided. 
     vkCmdBeginRenderPass(command_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    this->BindGraphicsPipeline(command_buffer);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipeline());
 
     // bind vertex buffer during rendering operations
     VkBuffer vertexBuffers[] = {vertex_buffer};
@@ -131,7 +131,7 @@ public:
 
     // Descriptor sets can be used in graphics or compute pipelines so we need to specify
     // which one to use.
-    this->BindDescriptorSets(command_buffer, current_frame);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &_descriptor_sets->GetDescriptorSets()[current_frame], 0, nullptr);
 
     // vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
     // instanceCount: Used for instanced rendering, use 1 if you're not doing that.
@@ -139,14 +139,6 @@ public:
     // firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex
     vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     vkCmdEndRenderPass(command_buffer);
-  }
-
-  void BindGraphicsPipeline(VkCommandBuffer command_buffer) {
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipeline());
-  }
-
-  void BindDescriptorSets(VkCommandBuffer command_buffer, uint32_t current_frame) {
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &_descriptor_sets->GetDescriptorSets()[current_frame], 0, nullptr);
   }
 
   // However, the disadvantage of this approach is that we need to stop all rendering before
