@@ -27,7 +27,14 @@ function drawSquare(x1, y1, x2, y2) {
 
 	var square = new THREE.Geometry();
 	// Your code goes here
+	[x1, x2].forEach(x_i => {
+		[y1, y2].forEach(y_i => {
+			square.vertices.push(new THREE.Vector3(x_i, y_i, 0));
+		});
+	});
 
+	square.faces.push(new THREE.Face3(0, 1, 2));
+	square.faces.push(new THREE.Face3(1, 2, 3))
 	// don't forget to return the geometry!	The following line is required!
 	return square;
 }

@@ -15,6 +15,12 @@
         "cwd": "${workspaceRoot}",
         // run the make task
         "preLaunchTask": "make"
+    },
+    {
+      "type": "pwa-msedge",
+      "request": "launch",
+      "name": "Open index.html",
+      "file": "${workspaceRoot}/graphics_3d_tutorial/index.html"
     }
   ]
 }
