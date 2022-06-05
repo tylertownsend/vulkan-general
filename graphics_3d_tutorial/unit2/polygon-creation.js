@@ -13,6 +13,15 @@
 var camera, scene, renderer;
 var windowScale;
 
+function generateFaces(geometry /*THREE.GEmoetry*/, sides /* number */) {
+	for (var i = 0; i < sides - 2; i++) {
+		var v_0 = 0;
+		var v_1 = (i + 1);
+		var v_2 = (i + 2);
+		geometry.faces.push( new THREE.Face3(v_0, v_1, v_2));
+	}
+}
+
 function PolygonGeometry(sides) {
 	var geo = new THREE.Geometry();
 
@@ -27,11 +36,11 @@ function PolygonGeometry(sides) {
 
 		// YOUR CODE HERE
 		//Save the vertex location - fill in the code
-
+		geo.vertices.push(new THREE.Vector3(x, y, 0));
 	}
 	// YOUR CODE HERE
 	// Write the code to generate minimum number of faces for the polygon.
-
+	generateFaces(geo, sides);
 	// Return the geometry object
 	return geo;
 }
@@ -91,7 +100,7 @@ function render() {
 try {
 	init();
 	showGrids();
-	var geo = PolygonGeometry(5);
+	var geo = PolygonGeometry(9);
 	var material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.FrontSide } );
 	var mesh = new THREE.Mesh( geo, material );
 	scene.add( mesh );
