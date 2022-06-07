@@ -12,7 +12,7 @@
 var camera, scene, renderer;
 var windowScale;
 
-function PolygonGeometry(sides, location) {
+function PolygonGeometry(sides, location/** Vector3 */) {
 	var geo = new THREE.Geometry();
 
 	// generate vertices
@@ -21,8 +21,8 @@ function PolygonGeometry(sides, location) {
 		// Add 90 degrees so we start at +Y axis, rotate counterclockwise around
 		var angle = (Math.PI/2) + (pt / sides) * 2 * Math.PI;
 
-		var x = Math.cos( angle );
-		var y = Math.sin( angle );
+		var x = location.x + Math.cos( angle );
+		var y = location.y + Math.sin( angle );
 
 		// Save the vertex location
 		geo.vertices.push( new THREE.Vector3( x, y, 0.0 ) );

@@ -16,16 +16,7 @@ var gridZ = false;
 var axes = false;
 var ground = true;
 
-function createStairs() {
-
-	// MATERIALS
-	var stepMaterialVertical = new THREE.MeshLambertMaterial( {
-		color: 0xA85F35
-	} );
-	var stepMaterialHorizontal = new THREE.MeshLambertMaterial( {
-		color: 0xBC7349
-	} );
-
+function createStepProperties() {
 	var stepWidth = 500;
 	var stepSize = 200;
 	var stepThickness = 50;
@@ -34,31 +25,79 @@ function createStairs() {
 	var horizontalStepDepth = stepSize*2;
 
 	var stepHalfThickness = stepThickness/2;
+	return {
+		stepWidth,
+		stepSize,
+		stepThickness,
+		verticalStepHeight,
+		horizontalStepDepth,
+		stepHalfThickness
+	};
+}
 
+
+function createVerticalStepPart(scene, stepProperties, position) {
+	var stepMaterialVertical = new THREE.MeshLambertMaterial( {
+		color: 0xA85F35
+	} );
+
+	var stepVertical = new THREE.CubeGeometry(stepProperties.stepWidth, stepProperties.verticalStepHeight, stepProperties.stepThickness);
+
+	var stepMesh = new THREE.Mesh( stepVertical, stepMaterialVertical );
+	stepMesh.position.x = position.x;
+	stepMesh.position.y = stepProperties.verticalStepHeight/2 + position.y;	// half of height: put it above ground plane
+	stepMesh.position.z = position.z;
+	scene.add( stepMesh );
+}
+
+function createHorizontalStepPart(scene, stepProperties, position) {
+	var stepMaterialHorizontal = new THREE.MeshLambertMaterial( {
+		color: 0xBC7349
+	} );
+
+
+	var stepHorizontal = new THREE.CubeGeometry(stepProperties.stepWidth, stepProperties.stepThickness, stepProperties.horizontalStepDepth);
+
+	var stepMesh = new THREE.Mesh( stepHorizontal, stepMaterialHorizontal );
+	stepMesh.position.x = position.x;
+	stepMesh.position.y = position.y + stepProperties.stepThickness/2 + stepProperties.verticalStepHeight;
+	stepMesh.position.z = position.z + stepProperties.horizontalStepDepth/2 - stepProperties.stepHalfThickness;
+	scene.add( stepMesh );
+}
+
+/**
+ * We are getting the 
+ * @param {*} scene 
+ * @param {*} stepProperties 
+ * @param {{x, y, z}} position The initial position for the axis of the current step.
+ * @returns The new intial position for the following step to start.
+ */
+function createStep(scene, stepProperties, position) {
 	// +Y direction is up
-	// Define the two pieces of the step, vertical and horizontal
-	// THREE.CubeGeometry takes (width, height, depth)
-	var stepVertical = new THREE.CubeGeometry(stepWidth, verticalStepHeight, stepThickness);
-	var stepHorizontal = new THREE.CubeGeometry(stepWidth, stepThickness, horizontalStepDepth);
-	var stepMesh;
+	createVerticalStepPart(scene, stepProperties, position);
+	createHorizontalStepPart(scene, stepProperties, position);
+}
 
-	// Make and position the vertical part of the step
-	stepMesh = new THREE.Mesh( stepVertical, stepMaterialVertical );
-	// The position is where the center of the block will be put.
-	// You can define position as THREE.Vector3(x, y, z) or in the following way:
-	stepMesh.position.x = 0;			// centered at origin
-	stepMesh.position.y = verticalStepHeight/2;	// half of height: put it above ground plane
-	stepMesh.position.z = 0;			// centered at origin
-	scene.add( stepMesh );
+function createStepStartingPosition(i, stepProperties) {
+	var xPos = 0;
+	var yPos = i * (stepProperties.stepThickness + stepProperties.verticalStepHeight);
+	var zPos = i * (stepProperties.horizontalStepDepth - stepProperties.stepThickness);
+	return { x: xPos, y: yPos, z:zPos };
+}
 
-	// Make and position the horizontal part
-	stepMesh = new THREE.Mesh( stepHorizontal, stepMaterialHorizontal );
-	stepMesh.position.x = 0;
-	// Push up by half of horizontal step's height, plus vertical step's height
-	stepMesh.position.y = stepThickness/2 + verticalStepHeight;
-	// Push step forward by half the depth, minus half the vertical step's thickness
-	stepMesh.position.z = horizontalStepDepth/2 - stepHalfThickness;
-	scene.add( stepMesh );
+function createStairs(cup) {
+	var cupBasePosition = {x: cup.position.x, y: cup.position.y, z: cup.position.z };
+
+	var stepProperties = createStepProperties();
+	// debugger;
+	var i = 0;
+	var position = createStepStartingPosition(i, stepProperties);
+	while (cupBasePosition.x >= position.x &&
+				 cupBasePosition.y >= position.y &&
+				 cupBasePosition.z >= position.z) {
+		createStep(scene, stepProperties, position );
+		position = createStepStartingPosition(++i, stepProperties);
+	}
 }
 
 function createCup() {
@@ -70,12 +109,14 @@ function createCup() {
 	cup.position.y = 1725;
 	cup.position.z = 1925;
 	scene.add( cup );
-	cupGeo = new THREE.CylinderGeometry( 100, 100, 50, 32 );
-	cup = new THREE.Mesh( cupGeo, cupMaterial );
-	cup.position.x = 0;
-	cup.position.y = 1525;
-	cup.position.z = 1925;
-	scene.add( cup );
+
+	var cupBaseGeo = new THREE.CylinderGeometry( 100, 100, 50, 32 );
+	var cupBase = new THREE.Mesh( cupBaseGeo, cupMaterial );
+	cupBase.position.x = 0;
+	cupBase.position.y = 1525;
+	cupBase.position.z = 1925;
+	scene.add( cupBase );
+	return cupBase;
 }
 
 function init() {
@@ -145,8 +186,8 @@ function fillScene() {
 	if (axes) {
 		Coordinates.drawAllAxes({axisLength:300,axisRadius:2,axisTess:50});
 	}
-	createCup();
-	var stairs = createStairs();
+	var cup = createCup();
+	var stairs = createStairs(cup);
 	scene.add(stairs);
 }
 //
