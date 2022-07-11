@@ -47,16 +47,22 @@ function fillScene() {
 	// or just simply theta = Math.acos( cylAxis.y );
 
 	// YOUR CODE HERE
+	addCylinder(cylLength, theta, cylinderMaterial, {x: 1, y: 0, z: -1});
+	addCylinder(cylLength, theta, cylinderMaterial, {x: 1, y: 0, z: 1});
+	addCylinder(cylLength, theta, cylinderMaterial, {x: -1, y: 0, z: 1});
+	addCylinder(cylLength, theta, cylinderMaterial, {x: -1, y: 0, z: -1});
+}
+
+function addCylinder(cylLength, theta, cylinderMaterial, basis) {
 	var cylinder = new THREE.Mesh(
 		new THREE.CylinderGeometry( 0.2, 0.2, cylLength, 32 ), cylinderMaterial );
-	var rotationAxis = new THREE.Vector3(1,0,-1);
+	var rotationAxis = new THREE.Vector3(basis.x, basis.y, basis.z);
 	// makeRotationAxis wants its axis normalized
 	rotationAxis.normalize();
 	// don't use position, rotation, scale
 	cylinder.matrixAutoUpdate = false;
 	cylinder.matrix.makeRotationAxis( rotationAxis, theta );
 	scene.add( cylinder );
-
 }
 
 function drawHelpers() {
