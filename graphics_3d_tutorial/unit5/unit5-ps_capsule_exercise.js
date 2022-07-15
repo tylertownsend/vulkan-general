@@ -49,11 +49,22 @@ function createCapsule( material, radius, top, bottom, segmentsWidth, openTop, o
 	// YOUR CODE HERE
 	// Here's a sphere's geometry. Use it to cap the cylinder if
 	// openTop and/or openBottom is false. Bonus points: use instancing!
+	var capsule = new THREE.Object3D();
+	capsule.add( cyl );
 	var sphGeom = new THREE.SphereGeometry( radius, segmentsWidth, segmentsWidth/2 );
+	if (!openTop) {
+		var sphTop = new THREE.Mesh(sphGeom, material);
+		sphTop.position.set(top.x, top.y, top.z);
+		capsule.add(sphTop);
+	}
 
-	// You'll probably want to return something other than this...
-	return cyl;
+	if (!openBottom) {
+		var sphBottom = new THREE.Mesh(sphGeom, material);
+		sphBottom.position.set(bottom.x, bottom.y, bottom.z);
+		capsule.add(sphBottom);
+	}
 
+	return capsule;
 }
 
 // Transform cylinder to align with given axis and then move to center
