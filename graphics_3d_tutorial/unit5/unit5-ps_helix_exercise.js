@@ -35,12 +35,13 @@ function createHelix( material, radius, tube, radialSegments, tubularSegments, h
 	var helix = new THREE.Object3D();
 	var sine_sign = clockwise ? 1 : -1;
 
+	var bottom = new THREE.Vector3();
+	var top = new THREE.Vector3();
+	var openBottom = false;
+	var openTop = false;
+	bottom.set( radius, -height/2, 0 );
+
 	for ( var i = 0; i <= arc*radialSegments ; i++ ) {
-		var bottom = new THREE.Vector3();
-		var top = new THREE.Vector3();
-		var openBottom = false;
-		var openTop = false;
-		bottom.set( radius, -height/2, 0 );
 		// going from X to Z axis
 		top.set(radius * Math.cos( i * 2*Math.PI / radialSegments ),
 						height * (i/(arc*radialSegments)) - height/2,
