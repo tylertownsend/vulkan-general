@@ -41,11 +41,40 @@ function fillScene() {
 	// YOUR CODE HERE
 	// add code here to make 24 petals, radiating around the sphere
 	// Just rotates and positions on the cylinder and petals are needed.
-	var cylinder = new THREE.Mesh( cylGeom, petalMaterial );
-	var petal = new THREE.Object3D();
-	petal.add( cylinder );
+	
+	// Petals
+	var angle = 0;
+	for (var i = 0; i < 24; i++) {
+		var cylinder = new THREE.Mesh( cylGeom, petalMaterial );
+		cylinder.position.y = petalLength /2;
+		var petal = new THREE.Object3D();
+		petal.add( cylinder );
 
-	flower.add( petal );
+		angle = i * Math.PI * 2 / 24;
+		petal.rotation.z = Math.PI / 2;
+		petal.rotation.y = angle;
+		petal.position.y = flowerHeight;
+
+		flower.add( petal );
+		console.log(flower);
+	}
+// 	var flower = new THREE.Object3D();
+
+// for ( var i = 0; i < 24 ; i++ )
+// {
+//     var cylinder = new THREE.Mesh( cylGeom, petalMaterial );
+//     cylinder.position.y = petalLength / 2;
+
+//     var petal = new THREE.Object3D();
+//     petal.add( cylinder );
+//     petal.rotation.z = 90 * Math.PI/180;
+//     petal.rotation.y = 15*i * Math.PI/180;
+//     petal.position.y = flowerHeight;
+
+//     flower.add( petal );
+// }
+
+
 
 	// Rest of the flower
 	var stamenMaterial = new THREE.MeshLambertMaterial( { color: 0x333310 } );
@@ -60,8 +89,9 @@ function fillScene() {
 	stem.position.y = flowerHeight/2;	// move from ground to stamen
 	flower.add( stem );
 
-	scene.add( flower );
 
+
+	scene.add( flower );
 }
 
 
