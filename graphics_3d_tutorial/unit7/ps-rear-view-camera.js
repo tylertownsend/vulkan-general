@@ -291,6 +291,12 @@ function render() {
 	var delta = clock.getDelta();
 	cameraControls.update(delta);
 
+	rearCam.position.copy( camera.position );
+	rearTarget.copy(camera.position)
+	rearTarget.sub( cameraControls.target );
+	rearTarget.add(camera.position);
+	rearCam.lookAt( rearTarget );
+
 	renderer.enableScissorTest( false );
 	renderer.setViewport( 0, 0, canvasWidth, canvasHeight );
 	renderer.clear();
