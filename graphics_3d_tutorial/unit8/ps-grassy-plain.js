@@ -10,6 +10,33 @@ var bevelRadius = 1.9;
 var clock = new THREE.Clock();
 var cylinder,sphere,cube;
 
+var path = "";	// STUDENT: set to "" to run on your computer, "/" for submitting code to Udacity
+
+function SquareGeometry() {
+	var geo = new THREE.Geometry();
+
+	// generate vertices
+	geo.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+	geo.vertices.push( new THREE.Vector3( 1.0, 0.0, 0.0 ) );
+	geo.vertices.push( new THREE.Vector3( 1.0, 1.0, 0.0 ) );
+	geo.vertices.push( new THREE.Vector3( 0.0, 1.0, 0.0 ) );
+
+	// Change this array to select the correct part of the texture
+	var uvs = [];
+	uvs.push( new THREE.Vector2( 0.75, 0.25 ) );
+	uvs.push( new THREE.Vector2( 1.0, 0.25 ) );
+	uvs.push( new THREE.Vector2( 1.0, 0.5 ) );
+	uvs.push( new THREE.Vector2( 0.75, 0.5 ) );
+
+	// generate faces
+	geo.faces.push( new THREE.Face3( 0, 1, 2 ) );
+	geo.faceVertexUvs[ 0 ].push( [ uvs[0], uvs[1], uvs[2] ] );
+	geo.faces.push( new THREE.Face3( 0, 2, 3 ) );
+	geo.faceVertexUvs[ 0 ].push( [ uvs[0], uvs[2], uvs[3] ] );
+	// done: return it.
+	return geo;
+}
+
 function fillScene() {
 	scene = new THREE.Scene();
 	scene.fog = new THREE.Fog( 0xAAAAAA, 3000, 5000 );
@@ -25,15 +52,20 @@ function fillScene() {
 
 	// GROUND
 	// Student: texture is located at URL /media/img/cs291/textures/grass512x512.jpg
+	var texture = THREE.ImageUtils.loadTexture('media/img/cs291/textures/grass512x512.jpg');
+	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+	texture.repeat.set(10, 10);
+	var material = new THREE.MeshLambertMaterial( { map: texture } );
+
 	var solidGround = new THREE.Mesh(
 		new THREE.PlaneGeometry( 10000, 10000, 100, 100 ),
-		new THREE.MeshLambertMaterial( { color: 0xFFFFFF } ) );
+		material);
 	solidGround.rotation.x = - Math.PI / 2;
 
 	scene.add( solidGround );
 
 	// uncomment to see grid on ground
-	/*
+
 	// put grid lines every 10000/100 = 100 units
 	var ground = new THREE.Mesh(
 		new THREE.PlaneGeometry( 10000, 10000, 100, 100 ),
@@ -42,7 +74,6 @@ function fillScene() {
 	// cheat: offset by a small amount so grid is on top
 	ground.position.y = 0.2;
 	scene.add( ground );
-	*/
 
 	// Bird
 	var bird = new THREE.Object3D();
