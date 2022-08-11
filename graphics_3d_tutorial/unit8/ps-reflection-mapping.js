@@ -35,9 +35,9 @@ function fillScene() {
 
 	var textureCube = THREE.ImageUtils.loadTextureCube( urls );
 	textureCube.format = THREE.RGBFormat;
-
 	var teapotMaterial = new THREE.MeshPhongMaterial(
-		{ color: 0x770000, specular:0xffaaaa } );
+		{ color: 0x770000, specular:0xffaaaa, 
+		envMap: textureCube } );
 
 	var teapot = new THREE.Mesh(
 		new THREE.TeapotGeometry( teapotSize,
