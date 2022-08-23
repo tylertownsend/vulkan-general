@@ -46,7 +46,7 @@ copy_sources(models)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # The main for testing
-set(entry_point "src/main.cpp")
+set(entry_point "src/VulkanTutorial/main.cpp")
 add_executable(main ${entry_point})
 target_compile_features(main PRIVATE cxx_std_17)
 target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
