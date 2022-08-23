@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.6)
 project (triangle LANGUAGES CXX)
 set(CMAKE_CX_C)
 
+# engine code
+add_subdirectory(engine)
+
 find_package(Vulkan REQUIRED)
 
 function(COPY_SOURCES SOURCE_PATH)
@@ -52,3 +55,4 @@ target_compile_features(main PRIVATE cxx_std_17)
 target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
 target_link_libraries( main glfw)
 target_link_libraries( main ${Vulkan_LIBRARIES})
+
