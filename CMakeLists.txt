@@ -4,6 +4,7 @@ set(CMAKE_CX_C)
 
 # engine code
 add_subdirectory(engine)
+add_subdirectory(sandbox)
 
 find_package(Vulkan REQUIRED)
 
@@ -49,10 +50,9 @@ copy_sources(models)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # The main for testing
-set(entry_point "src/vulkan/main.cpp")
-add_executable(main ${entry_point})
-target_compile_features(main PRIVATE cxx_std_17)
-target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
-target_link_libraries( main glfw)
-target_link_libraries( main ${Vulkan_LIBRARIES})
+add_executable(demo_main "src/vulkan/main.cpp")
+target_compile_features(demo_main PRIVATE cxx_std_17)
+target_include_directories(demo_main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
+target_link_libraries( demo_main glfw)
+target_link_libraries( demo_main ${Vulkan_LIBRARIES})
 
