@@ -6,13 +6,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 # Make variables referring to all the sources and test files.
 file(GLOB_RECURSE SOURCES "*.cpp")
 
-# find_package(MyLib REQUIRED)
+find_package(EngineLib REQUIRED)
 
 # The main for testing
 set(entry_point "main.cpp")
-add_executable(main ${entry_point})
-target_compile_features(main PRIVATE cxx_std_17)
+add_executable(sandbox ${entry_point})
+target_compile_features(sandbox PRIVATE cxx_std_17)
 # include_directories(${CMAKE_SOURCE_DIR}/engine) # include files from ProjectB
 # target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
-target_link_libraries( main engine)
-install(TARGETS main RUNTIME DESTINATION bin)
+target_link_libraries(sandbox engine)

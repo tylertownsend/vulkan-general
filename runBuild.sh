@@ -1,7 +1,8 @@
 mkdir -p build
 cd build 
-cmake -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON #-DCMAKE_INSTALL_PREFIX=.. 
- 
+# build and set installation root as build for debug
+# cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="../build" -DEngineLib_DIR="./build/share/EngineLib/cmake"
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="/usr"
 make
 make install
 cd ..
