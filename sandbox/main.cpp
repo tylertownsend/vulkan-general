@@ -1,9 +1,15 @@
 #include <iostream>
 
-#include <engine/main.h>
+#include <engine/engine.h>
 
-int main() {
-  engine::main();
-  std::cout << "hello world" << std::endl;
-  return 0;
+class Sandbox : public engine::Application {
+ public:
+  Sandbox() {
+  }
+  ~Sandbox() { }
+};
+
+engine::Application* engine::CreateApplication() {
+  std::cout << "Starting sandbox app\n";
+  return new Sandbox();
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-project (engine LANGUAGES CXX)
+project (engine LANGUAGES CXX VERSION 0.0.0 DESCRIPTION "A game engine")
 set(CMAKE_CX_C)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
@@ -18,21 +18,28 @@ include(GNUInstallDirs)
 add_library(${PROJECT_NAME} SHARED)
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/main.cpp
-)
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-        PRIVATE src
+        src/core.h
+        src/application.cpp
 )
 
-set(public_headers
-    "include/main.h"
-)
 set_target_properties(${PROJECT_NAME} PROPERTIES 
-    POSITION_INDEPENDENT_CODE TRUE)
+    POSITION_INDEPENDENT_CODE TRUE
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 1)
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        # Headers used from source/build location:
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        # headers used from installed location
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+# target_precompile_headers(engine 
+#     PUBLIC include/engine.h 
+#     PRIVATE "src/application.h"
+# )
 
 if (UNIX)
   # note that it is not CMAKE_INSTALL_PREFIX we are checking here
@@ -56,6 +63,7 @@ if (UNIX)
   endif()
 endif (UNIX)
 
+configure_file(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 set(PROJECT_SHARE EngineLib)
 set(PROJECT_CONFIG "${PROJECT_SHARE}Config")
@@ -63,9 +71,12 @@ set(PROJECT_CONFIG "${PROJECT_SHARE}Config")
 install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_CONFIG}
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
 install(EXPORT ${PROJECT_CONFIG} DESTINATION share/${PROJECT_SHARE}/cmake)
 
 export(TARGETS ${PROJECT_NAME} FILE "${PROJECT_CONFIG}.cmake")
+
+# install(FILES ${CMAKE_}/${PROJECT_NAME}.pc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)

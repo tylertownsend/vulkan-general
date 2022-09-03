@@ -1,17 +1,27 @@
 cmake_minimum_required(VERSION 3.6)
-project (engine LANGUAGES CXX)
+project (sandbox LANGUAGES CXX)
 set(CMAKE_CX_C)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Make variables referring to all the sources and test files.
 file(GLOB_RECURSE SOURCES "*.cpp")
 
+# # Attempting to find the installed package
+# find_package(EngineLib REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 find_package(EngineLib REQUIRED)
 
+if (NOT EngineLib_FOUND)
+  message(FATAL_ERROR "Could not find EngineLib library!")
+else ()
+  message (STATUS "EngineLib Found Lib!!")
+endif ()
+
+# get_cmake_property(_variableNames VARIABLES)
+# foreach (_variableName ${_variableNames})
+#     message(STATUS "${_variableName}=${${_variableName}}")
+# endforeach()
+
 # The main for testing
-set(entry_point "main.cpp")
-add_executable(sandbox ${entry_point})
+add_executable(sandbox "main.cpp")
 target_compile_features(sandbox PRIVATE cxx_std_17)
-# include_directories(${CMAKE_SOURCE_DIR}/engine) # include files from ProjectB
-# target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/*h")
 target_link_libraries(sandbox engine)
