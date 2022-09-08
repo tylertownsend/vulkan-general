@@ -10,6 +10,5 @@ class Sandbox : public engine::Application {
 };
 
 engine::Application* engine::CreateApplication() {
-  std::cout << "Starting sandbox app\n";
   return new Sandbox();
 }

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdarg.h>
 
 #include <spdlog/spdlog.h>
@@ -7,11 +8,10 @@
 
 namespace engine::monitor {
 
-bool ENABLED = false;
-
 enum LogLevel {
   Trace
 };
+
 
 spdlog::level::level_enum get_level(LogLevel level);
 
@@ -25,6 +25,7 @@ class Logger : public ILog {
     auto spdlog_level = get_level(level);
     _spdlog = spdlog::stdout_color_mt(logger_name);
     _spdlog->set_level(spdlog_level);
+    _spdlog->set_pattern("%^[%T] %n: %v%$");
   }
 
   ~Logger() {}
@@ -34,6 +35,7 @@ class Logger : public ILog {
   }
 
   void Info(std::string_view fmt) {
+    std::cout << _spdlog->name() << std::endl;;
     _spdlog->info(fmt);
   }
 
@@ -48,10 +50,6 @@ class Logger : public ILog {
 };
 
 std::shared_ptr<ILog> Create(LoggerType type, const LoggerOptions& options) {
-  if (!ENABLED) {
-    ENABLED = true;
-    spdlog::set_pattern("%^[%T] %n: %v%$");
-  }
   switch(type) {
     case LoggerType::ClientLogger: return std::make_shared<Logger>(options.name, LogLevel::Trace);
     default:                       return std::make_shared<Logger>(options.name, LogLevel::Trace);

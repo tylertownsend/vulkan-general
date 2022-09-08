@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
 
   engine::monitor::LoggerOptions coreOptions("Engine");
   auto coreLogger = engine::monitor::Create(engine::monitor::LoggerType::CoreLogger, coreOptions);
-  coreLogger->Info("Created Core Logger!");
+  coreLogger->Warn("Created Core Logger!");
 
   auto app = engine::CreateApplication();
   app->Run();
