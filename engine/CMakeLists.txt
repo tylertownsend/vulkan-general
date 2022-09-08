@@ -12,13 +12,17 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+find_package(spdlog)
+
 include(GNUInstallDirs)
 
 # Compile all sources into a library.
 add_library(${PROJECT_NAME} SHARED)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_sources(${PROJECT_NAME}
     PRIVATE
         src/core.h
+        src/log.cpp
         src/application.cpp
 )
 
@@ -36,6 +40,8 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+target_link_libraries(${PROJECT_NAME} spdlog)
 # target_precompile_headers(engine 
 #     PUBLIC include/engine.h 
 #     PRIVATE "src/application.h"
