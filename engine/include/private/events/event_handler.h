@@ -14,16 +14,16 @@ template<class T, class EventT>
 class EventHandler : IEventHandler {
  public:
   EventHandler() = delete;
-  EventHandler(T* instance, void (T::*MemberFunc)(EventT*) function):
-    _instance(instance),
+  EventHandler(T* state, void (*HandleFunc)(T*, EventT*) function):
+    _state(state),
     _function(function) { }
 
   void Call(std::unique_ptr<Event>) {
-    (_instance->*_function)(static_cast<EventT*>(event));
+    (*_function)(static_cast<EventT*>(_state, event));
   }
 
  private:
-  T* _instance;
-  void (T::*MemberFunc)(EventT*) _function;
+  T* _state;
+  void (*HandleFunc)(T*, EventT*) _function;
 };
 } // engine

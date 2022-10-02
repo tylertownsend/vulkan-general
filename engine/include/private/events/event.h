@@ -1,6 +1,7 @@
 #pragma once
 
-// #include <cstdint>
+
+// #include <concept>
 
 namespace engine {
 
@@ -30,4 +31,10 @@ struct Event {
   explicit Event(EventType type) : type(type) {}
   virtual ~Event() = 0;
 };
+
+// Requires c++20
+// concept Printable = requires(std::ostream& os, Event a)
+// {
+//     os << a;
+// };
 } // engine

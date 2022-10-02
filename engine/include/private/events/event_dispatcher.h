@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -13,17 +14,18 @@ class EventDispatcher {
   EventDispatcher() = default;
 
   template<class T, class EventT>
-  void Listen(T*, void (T::*memFn)(EventT*)) {
-
+  void Listen(T* state, void (*HandleFunc)(T*, EventT*), EventType type) {
+    auto handler = std::make_unique<EventHandler>(state, HandleFunc);
+    _subscribers[type].push_back(handler);
   }
 
   void Offer(std::unique_ptr<Event> event) {
     for (auto& subscriber : this->_subscribers.at(event->type)) {
-      subscriber.Call(std::move(event));
+      subscriber->Call(std::move(event));
     }
   }
 
  private:
-  std::unordered_map<EventType, std::vector<IEventHandler>> _subscribers;
+  std::unordered_map<EventType, std::vector<std::unique_ptr<IEventHandler>>> _subscribers;
 };
 } // engine
