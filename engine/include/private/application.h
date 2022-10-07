@@ -13,7 +13,7 @@ class Application {
   void Run();
 
  private:
-  Window* window_;
+  std::unique_ptr<Window> window_;
 };
 
 

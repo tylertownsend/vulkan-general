@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 
 #include "engine/private/application.h"
 
@@ -11,7 +12,8 @@ Application::Application() {
 
 // #ifdef ENGINE_PLATFORM_LINUX
   WindowOptions data(nullptr);
-  this->window_ = engine::p_linux::Window::Create(data);
+  auto window = engine::p_linux::Window::Create(data);
+  window_ = std::unique_ptr<engine::Window>(window);
 // #else
 //   #error Only Linux is supported
 // #endif
