@@ -14,6 +14,15 @@ endif()
 
 find_package(spdlog)
 
+# find the glfw3 binaries
+find_package(glfw3 3.3 REQUIRED)
+
+if (NOT glfw3_FOUND)
+  message(FATAL_ERROR "Could not find GLFW3 library!")
+else ()
+  message(STATUS "Found GLFW3 at ${glfw_LIBRARY}")
+endif ()
+
 include(GNUInstallDirs)
 
 # Compile all sources into a library.
@@ -21,6 +30,8 @@ add_library(${PROJECT_NAME} SHARED)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_sources(${PROJECT_NAME}
     PRIVATE
+        src/window.h
+        src/window.cpp
         src/core.h
         src/log.cpp
         src/application.cpp
@@ -46,6 +57,8 @@ target_link_libraries(${PROJECT_NAME} spdlog)
 #     PUBLIC include/engine.h 
 #     PRIVATE "src/application.h"
 # )
+
+target_link_libraries(${PROJECT_NAME} glfw)
 
 if (UNIX)
   # note that it is not CMAKE_INSTALL_PREFIX we are checking here

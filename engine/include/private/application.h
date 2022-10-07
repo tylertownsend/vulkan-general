@@ -1,4 +1,7 @@
 #pragma once
+#include <memory>
+
+#include "engine/private/window.h"
 
 namespace engine {
 
@@ -8,6 +11,9 @@ class Application {
   Application();
   virtual ~Application();
   void Run();
+
+ private:
+  Window* window_;
 };
 
 
