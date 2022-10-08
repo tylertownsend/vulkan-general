@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "engine/private/window.h"
+#include "engine/private/window_controller.h"
 
 namespace engine {
 
@@ -14,6 +15,7 @@ class Application {
 
  private:
   std::unique_ptr<Window> window_;
+  std::unique_ptr<IWindowController> window_controller_;
 };
 
 

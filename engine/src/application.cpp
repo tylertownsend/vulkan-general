@@ -11,8 +11,11 @@ namespace engine {
 Application::Application() {
 
 // #ifdef ENGINE_PLATFORM_LINUX
+  auto window_controller = engine::p_linux::WindowController::Create(nullptr);
+
   WindowOptions data(nullptr);
-  auto window = engine::p_linux::Window::Create(data);
+  auto window = window_controller->CreateWindow(data);
+
   window_ = std::unique_ptr<engine::Window>(window);
 // #else
 //   #error Only Linux is supported

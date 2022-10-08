@@ -32,7 +32,5 @@ class Window {
     data = options;
   }
   virtual ~Window() {}
-
-  static Window* Create(const WindowOptions& props);
 };
 } // namespace engine

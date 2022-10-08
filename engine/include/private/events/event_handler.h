@@ -1,5 +1,5 @@
 #pragma once
-#include "memory"
+#include <memory>
 
 #include "event.h"
 
@@ -14,16 +14,16 @@ template<class T, class EventT>
 class EventHandler : IEventHandler {
  public:
   EventHandler() = delete;
-  EventHandler(T* state, void (*HandleFunc)(T*, EventT*) function):
+  EventHandler(T* state, void (*HandleFunc)(T*, EventT*)):
     _state(state),
-    _function(function) { }
+    _function(HandleFunc) { }
 
-  void Call(std::unique_ptr<Event>) {
+  void Call(std::unique_ptr<Event> event) {
     (*_function)(static_cast<EventT*>(_state, event));
   }
 
  private:
   T* _state;
-  void (*HandleFunc)(T*, EventT*) _function;
+  void (*_function)(T*, EventT*);
 };
 } // engine
