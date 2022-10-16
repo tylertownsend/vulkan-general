@@ -48,7 +48,83 @@
       },
       "detail": "Task for running make file",
       "dependsOn": "cmake"
-    }
+    },
+
+    // engine & sandbox
+    {
+      "label": "make dir engine",
+      "type": "shell",
+      "command": "mkdir",
+      "options": {
+        "cwd": "${cwd}/build"
+      },
+      "args": [
+        "-p",
+        "engine"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Create Build Dir",
+      "dependsOn": "make dir"
+    },
+    {
+      "label": "cmake-engine",
+      "type": "shell",
+      "command": "cmake",
+      "options": {
+        "cwd": "${cwd}/build/engine"
+      },
+      "args": [
+        "../../engine/",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_INSTALL_PREFIX=\"/usr\""
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Task for running cmake file on the ",
+      "dependsOn": "make dir engine"
+    },
+    {
+      "label": "make dir sandbox",
+      "type": "shell",
+      "command": "mkdir",
+      "options": {
+        "cwd": "${cwd}/build"
+      },
+      "args": [
+        "-p",
+        "sandbox"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Create Build Dir",
+      "dependsOn": "cmake-engine"
+    },
+    {
+      "label": "cmake-sandbox",
+      "type": "shell",
+      "command": "cmake",
+      "options": {
+        "cwd": "${cwd}/build/sandbox"
+      },
+      "args": [
+        "../../sandbox/",
+        "-DCMAKE_BUILD_TYPE=Debug",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Task for running cmake file on the sandbox",
+      "dependsOn": "make dir sandbox"
+    },
   ],
   "version": "2.0.0"
 }
