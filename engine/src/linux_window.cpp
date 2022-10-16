@@ -118,8 +118,8 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
 
   glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x_pos, double y_pos) {
     engine::WindowOptions& data = *(WindowOptions*)glfwGetWindowUserPointer(window);
-
     auto event = std::make_unique<MouseMoveEvent>((float)x_pos, (float)y_pos);
+    std::cout << event->x_offset << "," << event->y_offset << std::endl;
     data.callback(std::move(event));
   });
   return window;

@@ -20,11 +20,21 @@ struct KeyPressedEvent : public KeyEvent, public Event {
     Event(EventType::KeyPressed),
     repeats(repeats) {}
   ~KeyPressedEvent(){}
+
+  void Serialize(std::ostream& os) const override { 
+    Event::SerializeBase(os);
+    os << ": " << key_code << " (" << repeats << " repeats)";
+  }
 };
 
 struct KeyReleasedEvent : public KeyEvent, public Event {
   KeyReleasedEvent(int key_code) : KeyEvent(key_code), Event(EventType::KeyReleased) {}
   ~KeyReleasedEvent(){}
+
+  void Serialize(std::ostream& os) const override { 
+    Event::SerializeBase(os);
+    os << ": " << key_code;
+  }
 };
 } // namespace engine
 

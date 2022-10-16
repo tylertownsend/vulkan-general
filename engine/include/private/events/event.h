@@ -56,11 +56,17 @@ struct Event {
   explicit Event(EventType type) : type(type) {}
   // virtual ~Event();
 
+  void SerializeBase(std::ostream& os) const {
+    auto output = get_text_from_enum(type);
+    os << output;
+  }
+
+  virtual void Serialize(std::ostream& os) const = 0;
+
   // define the operator inside the class definition.
-  friend std::ostream& operator << (std::ostream& o, const engine::Event& e) {
-    auto output = get_text_from_enum(e.type);
-    o << output;
-    return o; 
+  friend std::ostream& operator << (std::ostream& os, const engine::Event& e) {
+    e.Serialize(os);
+    return os; 
   }
 };
 // Requires c++20

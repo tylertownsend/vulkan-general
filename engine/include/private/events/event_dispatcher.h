@@ -34,9 +34,8 @@ class EventDispatcher {
     if (subscribers == _subscribers.end()) {
       return;
     }
-    auto event_data = *event.get();
     for (auto& subscriber : subscribers->second) {
-      subscriber->Call(event_data);
+      subscriber->Call(*event.get());
     }
   }
 

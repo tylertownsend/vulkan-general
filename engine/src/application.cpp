@@ -39,12 +39,11 @@ void Application::Run() {
 
   auto window_controller = engine::IWindowController::Create();
 
-  WindowOptions data([&event_dispatcher](std::unique_ptr<Event> event) {
+  WindowOptions data([&event_dispatcher] (std::unique_ptr<Event> event) {
     event_dispatcher->Offer(event);
 
-    auto event_data = *event.get();
-    std::cout << event_data << std::endl;
-  });
+    std::cout << *event.get() << std::endl;
+ });
   auto window = std::unique_ptr<engine::Window>(window_controller->CreateWindow(data));
 
   event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
