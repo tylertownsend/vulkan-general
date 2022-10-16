@@ -1,5 +1,8 @@
 #pragma once
+
 #include <memory>
+
+#include "runtime_configuration.h"
 
 namespace engine {
 
@@ -9,6 +12,9 @@ class Application {
   Application();
   virtual ~Application();
   void Run();
+
+ private:
+  std::unique_ptr<RuntimeConfiguration> runtime_configuration_;
 };
 
 
