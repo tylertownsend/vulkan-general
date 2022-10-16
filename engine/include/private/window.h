@@ -1,6 +1,7 @@
 #pragma once
-#include <string>
 #include <functional>
+#include <memory>
+#include <string>
 
 #include <GLFW/glfw3.h>
 
@@ -8,7 +9,7 @@
 
 namespace engine {
 
-using EventCallbackFn = std::function<void(Event&)>;
+using EventCallbackFn = std::function<void(std::unique_ptr<Event>)>;
 
 struct WindowOptions {
   unsigned int width;
