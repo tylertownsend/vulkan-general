@@ -54,7 +54,8 @@ struct Event {
   const EventType type;
   Event() = delete;
   explicit Event(EventType type) : type(type) {}
-  // virtual ~Event();
+
+  virtual ~Event();
 
   void SerializeBase(std::ostream& os) const {
     auto output = get_text_from_enum(type);
@@ -69,9 +70,4 @@ struct Event {
     return os; 
   }
 };
-// Requires c++20
-// concept Printable = requires(std::ostream& os, Event a)
-// {
-//     os << a;
-// };
 } // engine
