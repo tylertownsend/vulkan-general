@@ -19,10 +19,12 @@ struct KeyPressedEvent : public KeyEvent, public Event {
     KeyEvent(key_code),
     Event(EventType::KeyPressed),
     repeats(repeats) {}
+  ~KeyPressedEvent(){}
 };
 
 struct KeyReleasedEvent : public KeyEvent, public Event {
   KeyReleasedEvent(int key_code) : KeyEvent(key_code), Event(EventType::KeyReleased) {}
+  ~KeyReleasedEvent(){}
 };
 } // namespace engine
 
