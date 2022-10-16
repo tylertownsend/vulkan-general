@@ -1,4 +1,5 @@
 #include "engine/private/events/window.h"
+#include "engine/private/events/key_event.h"
 #include "engine/private/events/mouse_event.h"
 #include "engine/private/window.h"
 #include "linux_window.h"
@@ -37,14 +38,14 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
   window = glfwCreateWindow(options.width, options.height, options.title.c_str(), nullptr, nullptr);
   glfwMakeContextCurrent(window);
 
-  // glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
-  //   engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);
-  //   data.width = width;
-  //   data.height = height;
+  glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+    engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);
+    data.width = width;
+    data.height = height;
 
-  //   WindowResizeEvent event(width, height);
-  //   data.callback(event);
-  // });
+    auto event = std::make_unique<WindowResizeEvent> (width, height);
+    data.callback(std::move(event));
+  });
 
   glfwSetWindowCloseCallback(window, [](GLFWwindow* window) {
     engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);
@@ -52,43 +53,29 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
     data.callback(std::move(event));
   });
 
-  // glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
-  // {
-  //   WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+  glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+    engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);
 
-  //   switch (action)
-  //   {
-  //     case GLFW_PRESS:
-  //     {
-  //       KeyPressedEvent event(key, 0);
-  //       data.EventCallback(event);
-  //       break;
-  //     }
-  //     case GLFW_RELEASE:
-  //     {
-  //       KeyReleasedEvent event(key);
-  //       data.EventCallback(event);
-  //       break;
-  //     }
-  //     case GLFW_REPEAT:
-  //     {
-  //       KeyPressedEvent event(key, true);
-  //       data.EventCallback(event);
-  //       break;
-  //     }
-  //   }
-  // });
+    switch (action) {
+      case GLFW_PRESS: {
+        auto event = std::make_unique<KeyPressedEvent>(key, 0);
+        data.callback(std::move(event));
+        break;
+      }
+      case GLFW_RELEASE: {
+        auto event = std::make_unique<KeyReleasedEvent>(key);
+        data.callback(std::move(event));
+        break;
+      }
+      case GLFW_REPEAT: {
+        auto event = std::make_unique<KeyPressedEvent>(key, true);
+        data.callback(std::move(event));
+        break;
+      }
+    }
+  });
 
-  // glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
-  // {
-  //   WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
-
-  //   KeyTypedEvent event(keycode);
-  //   data.EventCallback(event);
-  // });
-
-  // glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods)
-  // {
+  // glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods) {
   //   WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
   //   switch (action)
@@ -108,18 +95,16 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
   //   }
   // });
 
-  // glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
-  // {
-  //   WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+  glfwSetScrollCallback(window, [](GLFWwindow* window, double x_offset, double y_offset) {
+    engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);
 
-  //   MouseScrolledEvent event((float)xOffset, (float)yOffset);
-  //   data.EventCallback(event);
-  // });
+    auto event = std::make_unique<MouseScrollEvent>((float)x_offset, (float)y_offset);
+    data.callback(std::move(event));
+  });
 
   glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x_pos, double y_pos) {
     engine::WindowOptions& data = *(WindowOptions*)glfwGetWindowUserPointer(window);
     auto event = std::make_unique<MouseMoveEvent>((float)x_pos, (float)y_pos);
-    std::cout << event->x_offset << "," << event->y_offset << std::endl;
     data.callback(std::move(event));
   });
   return window;

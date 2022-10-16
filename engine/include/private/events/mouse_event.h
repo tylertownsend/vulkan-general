@@ -19,6 +19,22 @@ struct MouseMoveEvent: public Event {
     os << ": " << x_offset << ", " << y_offset;
   }
 };
+struct MouseScrollEvent: public Event {
+  const float x_offset;
+  const float y_offset;
+
+  MouseScrollEvent(const float x_offset, const float y_offset):
+    x_offset(x_offset),
+    y_offset(y_offset),
+    Event(EventType::MouseScrolled) {}
+
+  void Serialize(std::ostream& os) const override {
+    Event::SerializeBase(os);
+    os << ": " << x_offset << ", " << y_offset;
+  }
+
+  ~MouseScrollEvent() {}
+};
 
 struct MouseClickEvent: public Event {
   MouseClickEvent() : Event(EventType::MouseButtonPressed) {}
