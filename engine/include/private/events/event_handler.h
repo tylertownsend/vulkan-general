@@ -7,23 +7,22 @@ namespace engine {
 
 class IEventHandler {
  public:
-  virtual void Call(std::unique_ptr<Event>) = 0;
+  virtual void Call(Event& event) = 0;
 };
 
-template<class T, class EventT>
-class EventHandler : IEventHandler {
+template<class EventT>
+class EventHandler : public IEventHandler {
  public:
   EventHandler() = delete;
-  EventHandler(T* state, void (*HandleFunc)(T*, EventT*)):
-    _state(state),
-    _function(HandleFunc) { }
+  EventHandler(std::function<void(EventT&)> handle_func):
+    _function(handle_func) { }
 
-  void Call(std::unique_ptr<Event> event) {
-    (*_function)(static_cast<EventT*>(_state, event));
+  void Call(Event& event) {
+    auto upcast_event = static_cast<EventT&>(event);
+    _function(upcast_event);
   }
 
  private:
-  T* _state;
-  void (*_function)(T*, EventT*);
+  std::function<void(EventT&)> _function;
 };
 } // engine
