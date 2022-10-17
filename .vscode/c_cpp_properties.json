@@ -5,7 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/deps/stb/**",
-                "${workspaceFolder}/build/include/**"
+                "${workspaceFolder}/engine/include/**",
+                "${workspaceFolder}/engine/include/engine/private/**",
+                "${workspaceFolder}/engine/include/engine/private/events/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

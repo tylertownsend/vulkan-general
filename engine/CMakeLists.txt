@@ -25,9 +25,40 @@ endif ()
 
 include(GNUInstallDirs)
 
+# set(headers
+#     include/private/events/event.h
+#     include/private/events/event_dispatcher.h
+#     include/private/events/event_handler.h
+#     include/private/events/key_event.h
+#     include/private/events/mouse_event.h
+#     include/private/events/window.h
+#     include/private/application.h
+#     include/private/entry_point.h
+#     include/private/log.h
+#     include/private/runtime_configuration.h
+#     include/private/window.h
+#     include/private/window_controller.h
+# )
+# include_directories(headers)
+include_directories(
+  ${PROJECT_SOURCE_DIR}/include/
+  ${PROJECT_SOURCE_DIR}/include/private/
+  ${PROJECT_SOURCE_DIR}/include/private/events/)
+
 # Compile all sources into a library.
 add_library(${PROJECT_NAME} SHARED)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+# -Wall -Wextra
+# target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/*h")
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        # Headers used from source/build location:
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        # headers used from installed location
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        include/private/
+)
 target_sources(${PROJECT_NAME}
     PRIVATE
         src/linux_window.h
@@ -42,23 +73,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1)
 
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        # Headers used from source/build location:
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        # headers used from installed location
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
+target_link_libraries(${PROJECT_NAME} 
+    spdlog
+    glfw
 )
-
-target_link_libraries(${PROJECT_NAME} spdlog)
 # target_precompile_headers(engine 
 #     PUBLIC include/engine.h 
 #     PRIVATE "src/application.h"
 # )
-
-target_link_libraries(${PROJECT_NAME} glfw)
 
 if (UNIX)
   # note that it is not CMAKE_INSTALL_PREFIX we are checking here
@@ -92,10 +114,8 @@ install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_CONFIG}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT ${PROJECT_CONFIG} DESTINATION share/${PROJECT_SHARE}/cmake)
 
 export(TARGETS ${PROJECT_NAME} FILE "${PROJECT_CONFIG}.cmake")
-
-# install(FILES ${CMAKE_}/${PROJECT_NAME}.pc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)

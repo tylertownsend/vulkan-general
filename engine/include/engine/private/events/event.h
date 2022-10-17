@@ -55,7 +55,7 @@ struct Event {
   Event() = delete;
   explicit Event(EventType type) : type(type) {}
 
-  virtual ~Event();
+  virtual ~Event() = default;
 
   void SerializeBase(std::ostream& os) const {
     auto output = get_text_from_enum(type);

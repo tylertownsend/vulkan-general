@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include "private/log.h"
+#include "engine/private/log.h"
 
 namespace engine::monitor {
 
