@@ -33,9 +33,12 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
   GLFWwindow* window;
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
   window = glfwCreateWindow(options.width, options.height, options.title.c_str(), nullptr, nullptr);
+  if (!window) {
+    std::cout << "Failed to create window\n";
+  }
   glfwMakeContextCurrent(window);
 
   glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
