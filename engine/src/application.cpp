@@ -9,6 +9,7 @@
 #include "engine/private/window.h"
 #include "engine/private/window_controller.h"
 #include "core.h"
+#include "imgui_controller.h"
 
 namespace engine {
 
@@ -51,8 +52,11 @@ void Application::Run() {
     std::cout << "Closing Window\n";
   });
 
+  auto imgui = std::make_unique<ImGuiController>();
+  imgui->OnAttach(window);
   while (application_state->running) {
     window_controller->OnUpdate(window);
+    imgui->OnUpdate(window);
   }
 }
 }

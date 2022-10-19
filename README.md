@@ -10,3 +10,14 @@ sudo apt install libstb-dev
 ```
 sudo apt install libspdlog-dev
 ```
+
+## GLFW
+```
+sudo apt install libglfw3
+sudo apt install libglfw3-dev
+```
+
+## GLEW
+```
+sudo apt-get install libglew-dev
+```

@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/deps/stb/**",
+                "${workspaceFolder}/engine/deps/imgui/**",
                 "${workspaceFolder}/engine/include/**",
                 "${workspaceFolder}/engine/include/engine/private/**",
                 "${workspaceFolder}/engine/include/engine/private/events/**"
@@ -17,6 +18,7 @@
             "compilerArgs": [
                 "-std=c++17"
             ]
+            // "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
     "version": 4

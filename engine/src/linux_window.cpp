@@ -32,11 +32,14 @@ engine::Window* WindowController::CreateWindow(const engine::WindowOptions& opti
 GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& options) {
   GLFWwindow* window;
   glfwInit();
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  // glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   window = glfwCreateWindow(options.width, options.height, options.title.c_str(), nullptr, nullptr);
   glfwMakeContextCurrent(window);
+  if (glfwGetCurrentContext()) {
+    std::cout << "initialized!\n";
+  }
 
   glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
     engine::WindowOptions& data = *(engine::WindowOptions*)glfwGetWindowUserPointer(window);

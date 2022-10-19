@@ -12,44 +12,34 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-find_package(spdlog)
+#TODO: Enable future vcpkg support https://stackoverflow.com/questions/68014365/how-can-i-link-glfw-and-dear-imgui-in-cmake
 
+find_package(spdlog)
 # find the glfw3 binaries
 find_package(glfw3 3.3 REQUIRED)
-
 if (NOT glfw3_FOUND)
   message(FATAL_ERROR "Could not find GLFW3 library!")
 else ()
   message(STATUS "Found GLFW3 at ${glfw_LIBRARY}")
 endif ()
 
+# list(APPEND CMAKE_INSTALL_PREFIX "C:/libs/glew-2.1.0/build/cmake/install")
+# set(glew_DIR "C:/libs/glew-2.1.0/build/cmake/install/lib/cmake/glew")
+# list(APPEND CMAKE_PREFIX_PATH "C:/libs/glew-2.1.0/build/cmake/install")
+
+find_package(GLEW REQUIRED)
+
+
 include(GNUInstallDirs)
 
-# set(headers
-#     include/private/events/event.h
-#     include/private/events/event_dispatcher.h
-#     include/private/events/event_handler.h
-#     include/private/events/key_event.h
-#     include/private/events/mouse_event.h
-#     include/private/events/window.h
-#     include/private/application.h
-#     include/private/entry_point.h
-#     include/private/log.h
-#     include/private/runtime_configuration.h
-#     include/private/window.h
-#     include/private/window_controller.h
-# )
-# include_directories(headers)
 include_directories(
   ${PROJECT_SOURCE_DIR}/include/
   ${PROJECT_SOURCE_DIR}/include/private/
-  ${PROJECT_SOURCE_DIR}/include/private/events/)
+  ${PROJECT_SOURCE_DIR}/include/private/events/
+  ${PROJECT_SOURCE_DIR}/deps/imgui/)
 
-# Compile all sources into a library.
 add_library(${PROJECT_NAME} SHARED)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-# -Wall -Wextra
-# target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/*h")
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         # Headers used from source/build location:
@@ -63,9 +53,27 @@ target_sources(${PROJECT_NAME}
     PRIVATE
         src/linux_window.h
         src/linux_window.cpp
+        src/imgui_controller.cpp
         src/core.h
         src/log.cpp
         src/application.cpp
+
+    # temporary solution. We add these files to the target
+    # We will add these to the vcpkg
+        deps/imgui/imgui.cpp
+        deps/imgui/imgui.h
+        deps/imgui/imgui_demo.cpp
+        deps/imgui/imgui_draw.cpp
+        deps/imgui/imgui_tables.cpp
+        deps/imgui/imgui_widgets.cpp
+        deps/imgui/imgui_internal.h
+        deps/imgui/imstb_rectpack.h
+        deps/imgui/imstb_textedit.h
+        deps/imgui/imstb_truetype.h
+        deps/imgui/backends/imgui_impl_glfw.h
+        deps/imgui/backends/imgui_impl_glfw.cpp
+        deps/imgui/backends/imgui_impl_opengl3.h
+        deps/imgui/backends/imgui_impl_opengl3.cpp
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES 
@@ -76,6 +84,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_link_libraries(${PROJECT_NAME} 
     spdlog
     glfw
+    GLEW
 )
 # target_precompile_headers(engine 
 #     PUBLIC include/engine.h 
