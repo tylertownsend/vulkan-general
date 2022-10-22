@@ -24,6 +24,7 @@ class Window : public engine::Window {
 
 class WindowController : public engine::IWindowController {
  public:
+  void OnFinish(std::unique_ptr<engine::Window>& window);
   void OnUpdate(std::unique_ptr<engine::Window>& window) override;
   engine::Window* CreateWindow(const engine::WindowOptions& options) override;
   static WindowController* Create();

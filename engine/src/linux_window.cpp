@@ -32,8 +32,10 @@ engine::Window* WindowController::CreateWindow(const engine::WindowOptions& opti
 GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& options) {
   GLFWwindow* window;
   glfwInit();
-  // glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+  glfwSwapInterval(1); // Enable vsync
 
   window = glfwCreateWindow(options.width, options.height, options.title.c_str(), nullptr, nullptr);
   glfwMakeContextCurrent(window);
@@ -115,8 +117,9 @@ GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& op
 
 void WindowController::OnUpdate(std::unique_ptr<engine::Window>& window) {
   glfwPollEvents();
+  auto platform_window = static_cast<engine::p_linux::Window*>(window.get());
+  auto opengl_window = static_cast<GLFWwindow*>(platform_window->window);
+  glfwSwapBuffers(opengl_window);
 }
-
-
 } // namespace p_linux
 } // namespace engine
