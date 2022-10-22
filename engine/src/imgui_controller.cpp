@@ -12,46 +12,29 @@ namespace engine {
 
 const char* glsl_version = "#version 130";
 
+bool init_glew();
+void setup_backend();
+
+// Consider how to handle events per window/layer
+// the events should be handled in a top down fashion based on the window/layer
+// with the current dispatcher this will create
+// many copies per layer.
+// on implementation detail is to have an additional layer on top of the dispatcher
+// for layers. so the indexes are
+// - layer -> eventType -> [EventDelgates]
+// 
+// problem with this is if the implementation of the stack changes then the delegates need
+// to swap
+// deleteing a layer will also invalidate the delgate
+// if the layers is small ~20 there should be little overhead with managing indices corresponding
+// to the layer of propcessing.
 void ImGuiController::OnAttach(std::unique_ptr<Window>& window) {
-  auto error_code = glewInit();
-  if (error_code != GLEW_OK) {
-    auto out_string = glewGetErrorString(error_code);
-    std::cout << "Failed to initialize GLEW\n " << out_string << std::endl;
-    return;
-  }
+  init_glew();
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
-  //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-  //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-  // Setup Dear ImGui style
   ImGui::StyleColorsDark();
-  //ImGui::StyleColorsLight();
 
-  // Setup Platform/Renderer backends
-  // // TEMPORARY: should eventually use Hazel key codes
-  // io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;
-  // io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
-  // io.KeyMap[ImGuiKey_RightArrow] = GLFW_KEY_RIGHT;
-  // io.KeyMap[ImGuiKey_UpArrow] = GLFW_KEY_UP;
-  // io.KeyMap[ImGuiKey_DownArrow] = GLFW_KEY_DOWN;
-  // io.KeyMap[ImGuiKey_PageUp] = GLFW_KEY_PAGE_UP;
-  // io.KeyMap[ImGuiKey_PageDown] = GLFW_KEY_PAGE_DOWN;
-  // io.KeyMap[ImGuiKey_Home] = GLFW_KEY_HOME;
-  // io.KeyMap[ImGuiKey_End] = GLFW_KEY_END;
-  // io.KeyMap[ImGuiKey_Insert] = GLFW_KEY_INSERT;
-  // io.KeyMap[ImGuiKey_Delete] = GLFW_KEY_DELETE;
-  // io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
-  // io.KeyMap[ImGuiKey_Space] = GLFW_KEY_SPACE;
-  // io.KeyMap[ImGuiKey_Enter] = GLFW_KEY_ENTER;
-  // io.KeyMap[ImGuiKey_Escape] = GLFW_KEY_ESCAPE;
-  // io.KeyMap[ImGuiKey_A] = GLFW_KEY_A;
-  // io.KeyMap[ImGuiKey_C] = GLFW_KEY_C;
-  // io.KeyMap[ImGuiKey_V] = GLFW_KEY_V;
-  // io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
-  // io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
-  // io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
+  setup_backend();
 
 #ifdef ENGINE_PLATFORM_LINUX
   auto platform_window = static_cast<engine::p_linux::Window*>(window.get());
@@ -76,6 +59,9 @@ void ImGuiController::OnUpdate(std::unique_ptr<Window>& window) {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
+  // TODO: Move render contents to platform
+  // BEGIN: Render Contents
+  //
   bool show_demo_window = true;
   bool show_another_window = true;
   // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
@@ -106,6 +92,10 @@ void ImGuiController::OnUpdate(std::unique_ptr<Window>& window) {
     ImGui::End();
   }
 
+  //
+  // END: Render Contents
+  //
+
 
   // Rendering
   // Window controller will swap buffers after each event poll
@@ -113,5 +103,43 @@ void ImGuiController::OnUpdate(std::unique_ptr<Window>& window) {
   glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+bool init_glew() {
+  auto result_code = glewInit();
+  if (result_code != GLEW_OK) {
+    auto out_string = glewGetErrorString(result_code);
+    std::cout << "Failed to initialize GLEW\n " << out_string << std::endl;
+  }
+  return result_code;
+}
+
+void setup_backend() {
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+  //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+  // // Setup Platform/Renderer backends
+  // io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;
+  // io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
+  // io.KeyMap[ImGuiKey_RightArrow] = GLFW_KEY_RIGHT;
+  // io.KeyMap[ImGuiKey_UpArrow] = GLFW_KEY_UP;
+  // io.KeyMap[ImGuiKey_DownArrow] = GLFW_KEY_DOWN;
+  // io.KeyMap[ImGuiKey_PageUp] = GLFW_KEY_PAGE_UP;
+  // io.KeyMap[ImGuiKey_PageDown] = GLFW_KEY_PAGE_DOWN;
+  // io.KeyMap[ImGuiKey_Home] = GLFW_KEY_HOME;
+  // io.KeyMap[ImGuiKey_End] = GLFW_KEY_END;
+  // io.KeyMap[ImGuiKey_Insert] = GLFW_KEY_INSERT;
+  // io.KeyMap[ImGuiKey_Delete] = GLFW_KEY_DELETE;
+  // io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
+  // io.KeyMap[ImGuiKey_Space] = GLFW_KEY_SPACE;
+  // io.KeyMap[ImGuiKey_Enter] = GLFW_KEY_ENTER;
+  // io.KeyMap[ImGuiKey_Escape] = GLFW_KEY_ESCAPE;
+  // io.KeyMap[ImGuiKey_A] = GLFW_KEY_A;
+  // io.KeyMap[ImGuiKey_C] = GLFW_KEY_C;
+  // io.KeyMap[ImGuiKey_V] = GLFW_KEY_V;
+  // io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
+  // io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
+  // io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
 }
 }
