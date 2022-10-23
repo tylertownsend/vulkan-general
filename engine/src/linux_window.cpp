@@ -14,8 +14,12 @@ namespace engine {
 namespace p_linux {
 
 Window::~Window() {
-  glfwDestroyWindow(this->window);
+  glfwDestroyWindow(window);
   glfwTerminate();
+}
+
+WindowController::~WindowController() {
+  
 }
 
 WindowController* WindowController::Create() {

@@ -1,13 +1,13 @@
 #include <iostream>
 #include <memory>
 
-#include "engine/private/events/event_dispatcher.h"
+// #include "engine/private/events/event_dispatcher.h"
 #include "engine/private/events/window.h"
 #include "engine/private/application.h"
 #include "engine/private/log.h"
 #include "engine/private/runtime_configuration.h"
-#include "engine/private/window.h"
-#include "engine/private/window_controller.h"
+// #include "engine/private/window.h"
+// #include "engine/private/window_controller.h"
 #include "core.h"
 #include "imgui_controller.h"
 
@@ -41,20 +41,17 @@ void Application::Run() {
   // std::cout << "her\n";
   auto application_state = std::make_unique<ApplicationState>();
 
-  // auto event_dispatcher = std::make_unique<EventDispatcher>();
+  auto event_dispatcher = std::make_unique<EventDispatcher>();
 
-  // window_->data.callback = [&event_dispatcher] (std::unique_ptr<Event> event) {
-  //   event_dispatcher->Offer(event);
-  //   std::cout << *event.get() << std::endl;
-  // };
+  window_->data.callback = [&event_dispatcher] (std::unique_ptr<Event> event) {
+    event_dispatcher->Offer(event);
+    std::cout << *event.get() << std::endl;
+  };
 
-  // event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
-  //   application_state->running = false;
-  //   std::cout << "Closing Window\n";
-  // });
-
-  // window_ = std::move(window);
-  // window_controller_ = std::unique_ptr<IWindowController>(window_controller);
+  event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
+    application_state->running = false;
+    std::cout << "Closing Window\n";
+  });
 
   // auto imgui = std::make_unique<ImGuiController>();
   // imgui->OnAttach(window_);

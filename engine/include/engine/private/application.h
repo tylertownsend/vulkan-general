@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "runtime_configuration.h"
+#include "engine/private/events/event_dispatcher.h"
 #include "engine/private/window.h"
 #include "engine/private/window_controller.h"
 
@@ -19,6 +20,7 @@ class Application {
   std::unique_ptr<RuntimeConfiguration> runtime_configuration_ = nullptr;
   std::unique_ptr<Window> window_ = nullptr;
   std::unique_ptr<IWindowController> window_controller_ = nullptr;
+  std::unique_ptr<EventDispatcher> event_dispatcher_ = nullptr;
 };
 
 
