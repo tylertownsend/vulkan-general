@@ -47,10 +47,6 @@ Application::Application() {
 
 Application::~Application() {}
 
-void Application::Push(std::unique_ptr<Layer> layer) {
-  application_stack_->Push(std::move(layer));
-  layer->OnAttach(window_);
-}
 
 void Application::Run() {
   // std::cout << "her\n";
@@ -69,4 +65,9 @@ void Application::Run() {
     imgui->OnUpdate(window_);
   }
 }
+
+// void Application::Push(std::unique_ptr<Layer> layer) {
+//   application_stack_->Push(std::move(layer));
+//   layer->OnAttach(window_);
+// }
 }

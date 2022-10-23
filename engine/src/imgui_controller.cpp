@@ -15,6 +15,10 @@ const char* glsl_version = "#version 130";
 bool init_glew();
 void setup_backend();
 
+ImGuiController::ImGuiController() {
+  event_dispatcher_ = std::make_unique<EventDispatcher>();
+}
+
 // Consider how to handle events per window/layer
 // the events should be handled in a top down fashion based on the window/layer
 // with the current dispatcher this will create
