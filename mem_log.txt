@@ -1,0 +1,293 @@
+==353438== Memcheck, a memory error detector
+==353438== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==353438== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
+==353438== Command: ./build/sandbox/sandbox
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A90D3C: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::unique_ptr<std::default_delete<engine::Window>, void>() (unique_ptr.h:200)
+==353438==    by 0x4A8F3A0: engine::Application::Application() (application.cpp:21)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A9250A: std::_Head_base<0ul, engine::Window*, false>::_Head_base() (tuple:123)
+==353438==    by 0x4A919FB: std::_Tuple_impl<0ul, engine::Window*, std::default_delete<engine::Window> >::_Tuple_impl() (tuple:207)
+==353438==    by 0x4A90D03: std::tuple<engine::Window*, std::default_delete<engine::Window> >::tuple<engine::Window*, std::default_delete<engine::Window>, true>() (tuple:919)
+==353438==    by 0x4A90D23: std::__uniq_ptr_impl<engine::Window, std::default_delete<engine::Window> >::__uniq_ptr_impl() (unique_ptr.h:146)
+==353438==    by 0x4A90D4E: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::unique_ptr<std::default_delete<engine::Window>, void>() (unique_ptr.h:200)
+==353438==    by 0x4A8F3A0: engine::Application::Application() (application.cpp:21)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A90E10: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::unique_ptr<std::default_delete<engine::IWindowController>, void>() (unique_ptr.h:200)
+==353438==    by 0x4A8F3B3: engine::Application::Application() (application.cpp:21)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A92580: std::_Head_base<0ul, engine::IWindowController*, false>::_Head_base() (tuple:123)
+==353438==    by 0x4A91AA5: std::_Tuple_impl<0ul, engine::IWindowController*, std::default_delete<engine::IWindowController> >::_Tuple_impl() (tuple:207)
+==353438==    by 0x4A90DD7: std::tuple<engine::IWindowController*, std::default_delete<engine::IWindowController> >::tuple<engine::IWindowController*, std::default_delete<engine::IWindowController>, true>() (tuple:919)
+==353438==    by 0x4A90DF7: std::__uniq_ptr_impl<engine::IWindowController, std::default_delete<engine::IWindowController> >::__uniq_ptr_impl() (unique_ptr.h:146)
+==353438==    by 0x4A90E22: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::unique_ptr<std::default_delete<engine::IWindowController>, void>() (unique_ptr.h:200)
+==353438==    by 0x4A8F3B3: engine::Application::Application() (application.cpp:21)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+App
+[08:33:11] App: Created Client Logger!
+[08:33:11] Engine: Created Core Logger!
+==353438== Invalid read of size 8
+==353438==    at 0x4A926DF: std::enable_if<std::__and_<std::__not_<std::__is_tuple_like<engine::IWindowController*> >, std::is_move_constructible<engine::IWindowController*>, std::is_move_assignable<engine::IWindowController*> >::value, void>::type std::swap<engine::IWindowController*>(engine::IWindowController*&, engine::IWindowController*&) (move.h:193)
+==353438==    by 0x4A91CA8: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::reset(engine::IWindowController*) (unique_ptr.h:400)
+==353438==    by 0x4A91099: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::operator=(std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >&&) (unique_ptr.h:307)
+==353438==    by 0x4A8F5B4: engine::Application::Application() (application.cpp:32)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A926F9: std::enable_if<std::__and_<std::__not_<std::__is_tuple_like<engine::IWindowController*> >, std::is_move_constructible<engine::IWindowController*>, std::is_move_assignable<engine::IWindowController*> >::value, void>::type std::swap<engine::IWindowController*>(engine::IWindowController*&, engine::IWindowController*&) (move.h:194)
+==353438==    by 0x4A91CA8: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::reset(engine::IWindowController*) (unique_ptr.h:400)
+==353438==    by 0x4A91099: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::operator=(std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >&&) (unique_ptr.h:307)
+==353438==    by 0x4A8F5B4: engine::Application::Application() (application.cpp:32)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid read of size 8
+==353438==    at 0x4A92746: std::__uniq_ptr_impl<engine::IWindowController, std::default_delete<engine::IWindowController> >::_M_ptr() const (unique_ptr.h:154)
+==353438==    by 0x4A91D4B: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::get() const (unique_ptr.h:361)
+==353438==    by 0x4A910FF: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::operator->() const (unique_ptr.h:355)
+==353438==    by 0x4A8F65F: engine::Application::Application() (application.cpp:35)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Syscall param sendmsg(msg.msg_iov[0]) points to uninitialised byte(s)
+==353438==    at 0x4F1F5E7: sendmsg (sendmsg.c:28)
+==353438==    by 0x5450D17: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x5451328: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x54515B6: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x5451E1F: xcb_flush (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x609FFE0: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x60A0FD9: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x609B07E: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x609FD58: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603CB34: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603D48F: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x76507CD: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==  Address 0x55ab6dd is 4,557 bytes inside a block of size 21,168 alloc'd
+==353438==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x5450884: xcb_connect_to_fd (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x5454B72: xcb_connect_to_display_with_auth_info (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==353438==    by 0x5298D29: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==353438==    by 0x52893A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==353438==    by 0x5001FF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==353438==    by 0x4FFB9E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==353438==    by 0x4A265C9: engine::p_linux::WindowController::create_glfw_window(engine::WindowOptions const&) (linux_window.cpp:34)
+==353438==    by 0x4A25DC5: engine::p_linux::WindowController::CreateWindow(engine::WindowOptions const&) (linux_window.cpp:26)
+==353438==    by 0x4A8F675: engine::Application::Application() (application.cpp:35)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438== 
+==353438== Warning: unimplemented fcntl command: 1033
+initialized!
+==353438== Invalid read of size 8
+==353438==    at 0x4A9277A: std::enable_if<std::__and_<std::__not_<std::__is_tuple_like<engine::Window*> >, std::is_move_constructible<engine::Window*>, std::is_move_assignable<engine::Window*> >::value, void>::type std::swap<engine::Window*>(engine::Window*&, engine::Window*&) (move.h:193)
+==353438==    by 0x4A91DBC: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::reset(engine::Window*) (unique_ptr.h:400)
+==353438==    by 0x4A9115D: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::operator=(std::unique_ptr<engine::Window, std::default_delete<engine::Window> >&&) (unique_ptr.h:307)
+==353438==    by 0x4A8F6A7: engine::Application::Application() (application.cpp:35)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A92794: std::enable_if<std::__and_<std::__not_<std::__is_tuple_like<engine::Window*> >, std::is_move_constructible<engine::Window*>, std::is_move_assignable<engine::Window*> >::value, void>::type std::swap<engine::Window*>(engine::Window*&, engine::Window*&) (move.h:194)
+==353438==    by 0x4A91DBC: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::reset(engine::Window*) (unique_ptr.h:400)
+==353438==    by 0x4A9115D: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::operator=(std::unique_ptr<engine::Window, std::default_delete<engine::Window> >&&) (unique_ptr.h:307)
+==353438==    by 0x4A8F6A7: engine::Application::Application() (application.cpp:35)
+==353438==    by 0x10933B: Sandbox::Sandbox() (main.cpp:7)
+==353438==    by 0x10928F: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+her
+her
+initialized!
+her1
+Closing Window
+her2
+WindowCloseEvent
+==353438== Invalid read of size 8
+==353438==    at 0x4A90E4B: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::~unique_ptr() (unique_ptr.h:291)
+==353438==    by 0x4A8F8AD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid read of size 8
+==353438==    at 0x4A90E6E: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::~unique_ptr() (unique_ptr.h:292)
+==353438==    by 0x4A8F8AD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A90E80: std::unique_ptr<engine::IWindowController, std::default_delete<engine::IWindowController> >::~unique_ptr() (unique_ptr.h:293)
+==353438==    by 0x4A8F8AD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f188 is 8 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid read of size 8
+==353438==    at 0x4A90D77: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::~unique_ptr() (unique_ptr.h:291)
+==353438==    by 0x4A8F8BD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid read of size 8
+==353438==    at 0x4A90D9A: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::~unique_ptr() (unique_ptr.h:292)
+==353438==    by 0x4A8F8BD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== Invalid write of size 8
+==353438==    at 0x4A90DAC: std::unique_ptr<engine::Window, std::default_delete<engine::Window> >::~unique_ptr() (unique_ptr.h:293)
+==353438==    by 0x4A8F8BD: engine::Application::~Application() (application.cpp:38)
+==353438==    by 0x109377: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109397: Sandbox::~Sandbox() (main.cpp:9)
+==353438==    by 0x109268: main (entry_point.h:10)
+==353438==  Address 0x559f180 is 0 bytes after a block of size 16 alloc'd
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x109284: engine::CreateApplication() (main.cpp:13)
+==353438==    by 0x109240: main (entry_point.h:8)
+==353438== 
+==353438== 
+==353438== HEAP SUMMARY:
+==353438==     in use at exit: 498,024 bytes in 1,323 blocks
+==353438==   total heap usage: 207,158 allocs, 205,835 frees, 619,211,397 bytes allocated
+==353438== 
+==353438== 8 bytes in 1 blocks are definitely lost in loss record 45 of 559
+==353438==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x4A25D86: engine::p_linux::WindowController::Create() (linux_window.cpp:22)
+==353438==    by 0x4A25CEE: engine::IWindowController::Create() (linux_window.cpp:9)
+==353438==    by 0x4A8FA30: engine::Application::Run() (application.cpp:46)
+==353438==    by 0x109250: main (entry_point.h:9)
+==353438== 
+==353438== 128 bytes in 1 blocks are definitely lost in loss record 414 of 559
+==353438==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x75B143B: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A69D9: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A545E: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75B55E8: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x603BC78: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x60A1C55: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603B1EA: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438== 
+==353438== 613 (128 direct, 485 indirect) bytes in 1 blocks are definitely lost in loss record 464 of 559
+==353438==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x75B143B: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A69D9: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A3988: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A500C: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75B55B2: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x603BC78: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x60A1C55: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603B1EA: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438== 
+==353438== 28,134 (6,024 direct, 22,110 indirect) bytes in 1 blocks are definitely lost in loss record 554 of 559
+==353438==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x75B143B: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A8415: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A3970: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A500C: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75B55B2: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x603BC78: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x60A1C55: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603B1EA: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438== 
+==353438== 123,502 (896 direct, 122,606 indirect) bytes in 1 blocks are definitely lost in loss record 558 of 559
+==353438==    at 0x483DFAF: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==353438==    by 0x75B06E2: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A6A70: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75A40DE: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x75B62F8: ??? (in /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.470.141.03)
+==353438==    by 0x603BC78: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x60A1C55: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438==    by 0x603B1EA: ??? (in /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.470.141.03)
+==353438== 
+==353438== LEAK SUMMARY:
+==353438==    definitely lost: 7,184 bytes in 5 blocks
+==353438==    indirectly lost: 145,201 bytes in 803 blocks
+==353438==      possibly lost: 0 bytes in 0 blocks
+==353438==    still reachable: 345,639 bytes in 515 blocks
+==353438==         suppressed: 0 bytes in 0 blocks
+==353438== Reachable blocks (those to which a pointer was found) are not shown.
+==353438== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==353438== 
+==353438== Use --track-origins=yes to see where uninitialised values come from
+==353438== For lists of detected and suppressed errors, rerun with: -s
+==353438== ERROR SUMMARY: 21 errors from 21 contexts (suppressed: 0 from 0)
