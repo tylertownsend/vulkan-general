@@ -1,13 +1,10 @@
 #include <iostream>
 #include <memory>
 
-// #include "engine/private/events/event_dispatcher.h"
 #include "engine/private/events/window.h"
 #include "engine/private/application.h"
 #include "engine/private/log.h"
 #include "engine/private/runtime_configuration.h"
-// #include "engine/private/window.h"
-// #include "engine/private/window_controller.h"
 #include "core.h"
 #include "imgui_controller.h"
 
@@ -44,9 +41,16 @@ Application::Application() {
   auto event_callback = window_event_callback(event_dispatcher_);
   WindowOptions data(event_callback);
   window_.reset((window_controller_->CreateWindow(data)));
+
+  application_stack_.reset(new ApplicationStack());
 }
 
 Application::~Application() {}
+
+void Application::Push(std::unique_ptr<Layer> layer) {
+  application_stack_->Push(std::move(layer));
+  layer->OnAttach(window_);
+}
 
 void Application::Run() {
   // std::cout << "her\n";
@@ -59,6 +63,7 @@ void Application::Run() {
 
   auto imgui = std::make_unique<ImGuiController>();
   imgui->OnAttach(window_);
+
   while (application_state->running) {
     window_controller_->OnUpdate(window_);
     imgui->OnUpdate(window_);

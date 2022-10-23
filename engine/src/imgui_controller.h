@@ -1,11 +1,12 @@
 #pragma once
 #include <memory>
 
+#include "engine/private/layer.h"
 #include "engine/private/window.h"
 
 namespace engine {
 
-class ImGuiController {
+class ImGuiController : public Layer {
  public:
   ImGuiController() = default;
   ~ImGuiController() = default;

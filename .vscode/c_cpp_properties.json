@@ -17,7 +17,8 @@
             "intelliSenseMode": "linux-gcc-x64",
             "compilerArgs": [
                 "-std=c++17"
-            ]
+            ],
+            "forcedInclude": []
             // "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
