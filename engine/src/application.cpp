@@ -27,36 +27,40 @@ Application::Application() {
   auto core_logger = engine::monitor::Create(engine::monitor::LoggerType::CoreLogger, core_options);
   core_logger->Warn("Created Core Logger!");
 
-  runtime_configuration_ = std::make_unique<engine::RuntimeConfiguration>(client_logger, core_logger);
+  runtime_configuration_.reset(new engine::RuntimeConfiguration(client_logger, core_logger));
+
+  window_controller_.reset(engine::IWindowController::Create());
+
+  WindowOptions data(nullptr);
+  window_.reset((window_controller_->CreateWindow(data)));
 }
 
 Application::~Application() {}
 
 void Application::Run() {
-
+  // std::cout << "her\n";
   auto application_state = std::make_unique<ApplicationState>();
 
-  auto event_dispatcher = std::make_unique<EventDispatcher>();
+  // auto event_dispatcher = std::make_unique<EventDispatcher>();
 
-  auto window_controller = engine::IWindowController::Create();
+  // window_->data.callback = [&event_dispatcher] (std::unique_ptr<Event> event) {
+  //   event_dispatcher->Offer(event);
+  //   std::cout << *event.get() << std::endl;
+  // };
 
-  WindowOptions data([&event_dispatcher] (std::unique_ptr<Event> event) {
-    event_dispatcher->Offer(event);
+  // event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
+  //   application_state->running = false;
+  //   std::cout << "Closing Window\n";
+  // });
 
-    std::cout << *event.get() << std::endl;
- });
-  auto window = std::unique_ptr<engine::Window>(window_controller->CreateWindow(data));
+  // window_ = std::move(window);
+  // window_controller_ = std::unique_ptr<IWindowController>(window_controller);
 
-  event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
-    application_state->running = false;
-    std::cout << "Closing Window\n";
-  });
-
-  auto imgui = std::make_unique<ImGuiController>();
-  imgui->OnAttach(window);
+  // auto imgui = std::make_unique<ImGuiController>();
+  // imgui->OnAttach(window_);
   while (application_state->running) {
-    window_controller->OnUpdate(window);
-    imgui->OnUpdate(window);
+    window_controller_->OnUpdate(window_);
+    // imgui->OnUpdate(window_);
   }
 }
 }

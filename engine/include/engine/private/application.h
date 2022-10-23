@@ -3,6 +3,8 @@
 #include <memory>
 
 #include "runtime_configuration.h"
+#include "engine/private/window.h"
+#include "engine/private/window_controller.h"
 
 namespace engine {
 
@@ -14,7 +16,9 @@ class Application {
   void Run();
 
  private:
-  std::unique_ptr<RuntimeConfiguration> runtime_configuration_;
+  std::unique_ptr<RuntimeConfiguration> runtime_configuration_ = nullptr;
+  std::unique_ptr<Window> window_ = nullptr;
+  std::unique_ptr<IWindowController> window_controller_ = nullptr;
 };
 
 

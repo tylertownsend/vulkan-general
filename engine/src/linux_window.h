@@ -30,7 +30,8 @@ class WindowController : public engine::IWindowController {
   static WindowController* Create();
 
  private:
-  WindowController() {}
+  WindowController() = default;
+  ~WindowController();
   GLFWwindow* create_glfw_window(const engine::WindowOptions& options);
 };
 

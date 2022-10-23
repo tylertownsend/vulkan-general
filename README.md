@@ -21,3 +21,5 @@ sudo apt install libglfw3-dev
 ```
 sudo apt-get install libglew-dev
 ```
+## Debug:
+valgrind --tool=memcheck --leak-check=full --track-origins=yes ./build/sandbox/sandbox
