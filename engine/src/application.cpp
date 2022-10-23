@@ -57,11 +57,11 @@ void Application::Run() {
     std::cout << "Closing Window\n";
   });
 
-  // auto imgui = std::make_unique<ImGuiController>();
-  // imgui->OnAttach(window_);
+  auto imgui = std::make_unique<ImGuiController>();
+  imgui->OnAttach(window_);
   while (application_state->running) {
     window_controller_->OnUpdate(window_);
-    // imgui->OnUpdate(window_);
+    imgui->OnUpdate(window_);
   }
 }
 }
