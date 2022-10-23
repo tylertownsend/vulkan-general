@@ -18,6 +18,14 @@ struct ApplicationState {
   ApplicationState(): running(true) {}
 };
 
+// void
+auto window_event_callback(std::unique_ptr<EventDispatcher>& event_dispatcher) {
+  return [&event_dispatcher] (std::unique_ptr<Event> event) {
+    event_dispatcher->Offer(event);
+    std::cout << *event.get() << std::endl;
+  };
+}
+
 Application::Application() {
   engine::monitor::LoggerOptions client_options("App");
   auto client_logger = engine::monitor::Create(engine::monitor::LoggerType::ClientLogger, client_options);
@@ -31,7 +39,10 @@ Application::Application() {
 
   window_controller_.reset(engine::IWindowController::Create());
 
-  WindowOptions data(nullptr);
+  event_dispatcher_ = std::make_unique<EventDispatcher>();
+
+  auto event_callback = window_event_callback(event_dispatcher_);
+  WindowOptions data(event_callback);
   window_.reset((window_controller_->CreateWindow(data)));
 }
 
@@ -41,14 +52,7 @@ void Application::Run() {
   // std::cout << "her\n";
   auto application_state = std::make_unique<ApplicationState>();
 
-  auto event_dispatcher = std::make_unique<EventDispatcher>();
-
-  window_->data.callback = [&event_dispatcher] (std::unique_ptr<Event> event) {
-    event_dispatcher->Offer(event);
-    std::cout << *event.get() << std::endl;
-  };
-
-  event_dispatcher->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
+  event_dispatcher_->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
     application_state->running = false;
     std::cout << "Closing Window\n";
   });
