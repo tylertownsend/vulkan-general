@@ -29,7 +29,6 @@ endif ()
 
 find_package(GLEW REQUIRED)
 
-
 include(GNUInstallDirs)
 
 include_directories(
@@ -57,6 +56,7 @@ target_sources(${PROJECT_NAME}
         src/core.h
         src/log.cpp
         src/application.cpp
+        src/application_stack.cpp
 
     # temporary solution. We add these files to the target
     # We will add these to the vcpkg

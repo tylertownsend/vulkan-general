@@ -16,7 +16,7 @@ class Application {
   Application();
   virtual ~Application();
   void Run();
-  // void Push(std::unique_ptr<Layer> layer);
+  void Push(std::unique_ptr<Layer> layer);
 
  private:
   std::unique_ptr<RuntimeConfiguration> runtime_configuration_ = nullptr;

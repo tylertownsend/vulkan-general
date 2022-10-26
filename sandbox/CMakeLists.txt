@@ -16,6 +16,8 @@ else ()
   message (STATUS "EngineLib Found Lib!!")
 endif ()
 
+find_package(glm REQUIRED)
+
 # get_cmake_property(_variableNames VARIABLES)
 # foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
@@ -24,4 +26,4 @@ endif ()
 # The main for testing
 add_executable(sandbox "main.cpp")
 target_compile_features(sandbox PRIVATE cxx_std_17)
-target_link_libraries(sandbox engine)
+target_link_libraries(sandbox engine ${GLM_INCLUDE_DIRS})

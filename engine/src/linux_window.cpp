@@ -36,7 +36,7 @@ engine::Window* WindowController::CreateWindow(const engine::WindowOptions& opti
 GLFWwindow* WindowController::create_glfw_window(const engine::WindowOptions& options) {
   GLFWwindow* window;
   glfwInit();
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
   glfwSwapInterval(1); // Enable vsync
