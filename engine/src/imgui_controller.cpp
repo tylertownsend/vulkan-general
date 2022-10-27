@@ -107,6 +107,13 @@ void ImGuiController::OnUpdate(std::unique_ptr<Window>& window) {
   glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    GLFWwindow* backup_current_context = glfwGetCurrentContext();
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
+    glfwMakeContextCurrent(backup_current_context);
+  }
 }
 
 bool init_glew() {
@@ -122,28 +129,7 @@ void setup_backend() {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
   //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-  // // Setup Platform/Renderer backends
-  // io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;
-  // io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
-  // io.KeyMap[ImGuiKey_RightArrow] = GLFW_KEY_RIGHT;
-  // io.KeyMap[ImGuiKey_UpArrow] = GLFW_KEY_UP;
-  // io.KeyMap[ImGuiKey_DownArrow] = GLFW_KEY_DOWN;
-  // io.KeyMap[ImGuiKey_PageUp] = GLFW_KEY_PAGE_UP;
-  // io.KeyMap[ImGuiKey_PageDown] = GLFW_KEY_PAGE_DOWN;
-  // io.KeyMap[ImGuiKey_Home] = GLFW_KEY_HOME;
-  // io.KeyMap[ImGuiKey_End] = GLFW_KEY_END;
-  // io.KeyMap[ImGuiKey_Insert] = GLFW_KEY_INSERT;
-  // io.KeyMap[ImGuiKey_Delete] = GLFW_KEY_DELETE;
-  // io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
-  // io.KeyMap[ImGuiKey_Space] = GLFW_KEY_SPACE;
-  // io.KeyMap[ImGuiKey_Enter] = GLFW_KEY_ENTER;
-  // io.KeyMap[ImGuiKey_Escape] = GLFW_KEY_ESCAPE;
-  // io.KeyMap[ImGuiKey_A] = GLFW_KEY_A;
-  // io.KeyMap[ImGuiKey_C] = GLFW_KEY_C;
-  // io.KeyMap[ImGuiKey_V] = GLFW_KEY_V;
-  // io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
-  // io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
-  // io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   
 }
 }
