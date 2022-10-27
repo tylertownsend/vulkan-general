@@ -62,7 +62,9 @@ void Application::Run() {
 
   while (application_state->running) {
     window_controller_->OnUpdate(window_);
+    imgui->Start();
     imgui->OnUpdate(window_);
+    imgui->End();
   }
 }
 

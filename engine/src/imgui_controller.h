@@ -11,8 +11,10 @@ class ImGuiController : public Layer {
  public:
   ImGuiController();
   ~ImGuiController() = default;
-  void OnAttach(std::unique_ptr<Window>& window);
-  void OnUpdate(std::unique_ptr<Window>& window);
+  void OnAttach(std::unique_ptr<Window>& window) override;
+  void OnUpdate(std::unique_ptr<Window>& window) override;
+  void Start();
+  void End();
  private:
   float m_Time = 0.0f;
   std::unique_ptr<EventDispatcher> event_dispatcher_ = nullptr;
