@@ -53,12 +53,12 @@ Application::~Application() {}
 
 
 void Application::Run() {
-  // std::cout << "her\n";
   auto application_state = std::make_unique<ApplicationState>();
+  auto runtime_configuration = std::move(runtime_configuration_);
 
-  event_dispatcher_->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&application_state](WindowOnCloseEvent& event) {
+  event_dispatcher_->Listen<WindowOnCloseEvent>(EventType::WindowClose, [&runtime_configuration, &application_state](WindowOnCloseEvent& event) {
     application_state->running = false;
-    std::cout << "Closing Window\n";
+    runtime_configuration->client_logger->Info("Closing Window");
   });
 
   auto imgui = std::make_unique<ImGuiController>();
@@ -92,7 +92,6 @@ void Application::Run() {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   while (application_state->running) {
-
     glBindVertexArray(vertex_array);
     glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
     window_controller_->OnUpdate(window_);
